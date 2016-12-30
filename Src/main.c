@@ -69,11 +69,16 @@ static void MX_SPI1_Init(void);
 
 /* USER CODE END 0 */
 
+extern void initialise_monitor_handles(void);
+
 int main(void)
 {
 
   /* USER CODE BEGIN 1 */
 	int LD2_state = 0;
+	uint8_t rxData[8];
+	uint8_t GetDeviceId[8] = {0x3, 0x0, 0x0, 0x2, 0x0, 0x1, 0x1, 0x4};
+	uint8_t GetSystemInfo[8] = {0x3, 0x1, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0};
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -92,7 +97,7 @@ int main(void)
   MX_SPI1_Init();
 
   /* USER CODE BEGIN 2 */
-
+  initialise_monitor_handles();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -102,8 +107,14 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+	  printf("\nTest\n");
 	  LD2_state = HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin);
 	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, LD2_state);
+
+	  //HAL_SPI_Transmit()
+//	  HAL_SPI_Transmit(&hspi1, GetSystemInfo, 8, 1000);
+//	  HAL_SPI_Receive(&hspi1, rxData, 8, 1000);
+	  HAL_SPI_TransmitReceive(&hspi1, GetSystemInfo, rxData, 8, 1000);
 
   }
   /* USER CODE END 3 */
