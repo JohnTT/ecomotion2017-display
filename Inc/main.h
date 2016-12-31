@@ -54,7 +54,8 @@
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
-
+#define SS1n_Pin  GPIO_PIN_6
+#define SS1n_Port GPIOB
 /* USER CODE END Private defines */
 
 /**

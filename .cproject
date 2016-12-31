@@ -99,8 +99,8 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
-		<configuration configurationName="Debug">
-			<resource resourceType="PROJECT" workspacePath="/stm32cubemx_f303re"/>
+		<configuration artifactName="stm32cubemx_f303re" configurationName="Debug">
+			<resource resourceType="PROJECT" workspacePath="stm32cubemx_f303re"/>
 		</configuration>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>

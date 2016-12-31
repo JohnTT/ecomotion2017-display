@@ -66,10 +66,8 @@ static void MX_SPI1_Init(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
-
 extern void initialise_monitor_handles(void);
+/* USER CODE END 0 */
 
 int main(void)
 {
@@ -77,7 +75,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	int LD2_state = 0;
 	uint8_t rxData[8];
-	uint8_t GetDeviceId[8] = {0x3, 0x0, 0x0, 0x2, 0x0, 0x1, 0x1, 0x4};
+	uint8_t GetDeviceInfo[8] = {0x3, 0x0, 0x0, 0x1, 0x0, 0x1, 0x1, 0x4};
 	uint8_t GetSystemInfo[8] = {0x3, 0x1, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0};
   /* USER CODE END 1 */
 
@@ -98,6 +96,8 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
   initialise_monitor_handles();
+  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+  HAL_Delay(100);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,13 +108,35 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 	  printf("\nTest\n");
-	  LD2_state = HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin);
-	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, LD2_state);
+	  HAL_Delay(100);
 
 	  //HAL_SPI_Transmit()
 //	  HAL_SPI_Transmit(&hspi1, GetSystemInfo, 8, 1000);
 //	  HAL_SPI_Receive(&hspi1, rxData, 8, 1000);
-	  HAL_SPI_TransmitReceive(&hspi1, GetSystemInfo, rxData, 8, 1000);
+
+	  // Get Device Info
+	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+	  HAL_Delay(100);
+	  HAL_SPI_TransmitReceive(&hspi1, GetDeviceInfo, rxData, 8, 1000);
+	  HAL_Delay(100);
+	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+
+	  printf("\nEnd of Command\n");
+	  HAL_Delay(100);
+
+
+	  // Listen for Response
+	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+	  HAL_Delay(100);
+	  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[6], &rxData[0], 1, 1000);
+	  while (rxData[0] != 0x0) {
+		  printf("%x ", (unsigned)rxData[0]);
+		  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[6], &rxData[0], 1, 1000);
+	  }
+	  HAL_Delay(100);
+	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+	  printf("\nEnd of Response\n");
+
 
   }
   /* USER CODE END 3 */
@@ -319,8 +341,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PB6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
 
 }
 
