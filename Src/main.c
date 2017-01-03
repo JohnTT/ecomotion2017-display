@@ -74,9 +74,10 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 	int LD2_state = 0;
-	uint8_t rxData[8];
-	uint8_t GetDeviceInfo[8] = {0x3, 0x0, 0x0, 0x1, 0x0, 0x1, 0x1, 0x4};
-	uint8_t GetSystemInfo[8] = {0x3, 0x1, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0};
+	uint8_t rxData[4];
+//	uint8_t GetDeviceInfo[8] = {0x3, 0x0, 0x0, 0x1, 0x0, 0x1, 0x1, 0x4};
+//	uint8_t GetSystemInfo[8] = {0x3, 0x1, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0};
+	uint8_t GetSystemInfo[4] = {0x31, 0x01, 0x01, 0x00};
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -117,7 +118,7 @@ int main(void)
 	  // Get Device Info
 	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
 	  HAL_Delay(100);
-	  HAL_SPI_TransmitReceive(&hspi1, GetDeviceInfo, rxData, 8, 1000);
+	  HAL_SPI_TransmitReceive(&hspi1, GetSystemInfo, rxData, 4, 1000);
 	  HAL_Delay(100);
 	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
 
@@ -128,10 +129,10 @@ int main(void)
 	  // Listen for Response
 	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
 	  HAL_Delay(100);
-	  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[6], &rxData[0], 1, 1000);
-	  while (rxData[0] != 0x0) {
-		  printf("%x ", (unsigned)rxData[0]);
-		  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[6], &rxData[0], 1, 1000);
+	  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[6], rxData, 1, 1000);
+	  while (rxData[0] != 0x00) {
+		  printf("%x ", rxData[0]);
+		  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[6], rxData, 1, 1000);
 	  }
 	  HAL_Delay(100);
 	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
