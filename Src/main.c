@@ -4,7 +4,7 @@
   * Description        : Main program body
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2017 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -48,7 +48,16 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+int file_size = 15016;
+int header = 16;
+uint8_t rxData[4];
+uint8_t pkt_size = 0xF0;
+uint8_t tx = 0x00;
+uint8_t img_buf[15016];
+uint8_t GetSystemInfo[4] = {0x31, 0x01, 0x01, 0x00};
+uint8_t DisplayUpdate[3] = {0x24, 0x01, 0x00};
+uint8_t UploadImageData[3] = {0x20, 0x01, 0x00};
+uint8_t ResetDataPointer[3] = {0x20, 0x0D, 0x00};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -62,6 +71,419 @@ static void MX_SPI1_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+// Functions defined by user
+void init();
+void waitTCBusy();
+int readResponse(int Le);
+void readStrResponse();
+void clearImageBuffer();
+void drawRectangle();
+void setAllBlack();
+void setAllWhite();
+void setBlackXY(int x, int y);
+void setWhiteXY(int x, int y);
+void drawRectangle(int X1, int Y1, int X2, int Y2);
+void clearRectangle(int X1, int Y1, int X2, int Y2);
+void drawDiagonal(int X1, int Y1, int X2, int Y2, int dx, int dy);
+int drawCharacter(int x, int y, int pt, char c);
+int drawString(int x, int y, int pt, int sp, char s[], int size);
+void testDraw();
+
+
+// Functions defined for the TCM 441-230
+void uploadImageBuffer();
+void resetDataPointer();
+void displayUpdate();
+void getDeviceInfo();
+void getDeviceID();
+void getSystemInfo();
+void getSystemVersionCode();
+void readSensorData();
+
+int numPlaces (int n)
+{
+    if (n < 10) return 1;
+    if (n < 100) return 2;
+    if (n < 1000) return 3;
+    if (n < 10000) return 4;
+    if (n < 100000) return 5;
+    if (n < 1000000) return 6;
+    if (n < 10000000) return 7;
+    if (n < 100000000) return 8;
+    if (n < 1000000000) return 9;
+    /*      2147483647 is 2^31-1 - add more ifs as needed
+       and adjust this final return as well. */
+    return 10;
+}
+
+
+char *itoa (int value, char *result, int base)
+{
+    // check that the base if valid
+    if (base < 2 || base > 36) {
+        *result = '\0';
+        return result;
+    }
+
+    char* ptr = result, *ptr1 = result, tmp_char;
+    int tmp_value;
+
+    do {
+        tmp_value = value;
+        value /= base;
+        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+    } while ( value );
+
+    // Apply negative sign
+    if (tmp_value < 0) *ptr++ = '-';
+    *ptr-- = '\0';
+    while (ptr1 < ptr) {
+        tmp_char = *ptr;
+        *ptr--= *ptr1;
+        *ptr1++ = tmp_char;
+    }
+    return result;
+}
+
+void waitTCBusy()
+{
+	uint8_t rx;
+    HAL_Delay(10);
+    rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
+    while (!rx) {
+        // printf("\n\rTC Busy\n\r");
+    	rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
+        HAL_Delay(10);
+    }
+}
+
+int readResponse(int Le)
+{
+    int flag = 0;
+
+    int rx;
+    waitTCBusy();
+    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+    for (int i=0; i<Le+2; i++) {
+    	HAL_SPI_TransmitReceive(&hspi1, &tx, &rx, 1, 1000);
+//        printf(" **%x ", (uint8_t)rxData);
+        if (i == 0 && (uint8_t)rx != 0x90)
+            flag = 1;
+        if (i == 1 && (uint8_t)rx != 0x00)
+            flag = 1;
+    }
+    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+//    printf("\n\rEnd of Response %d\n\r", flag);
+    return flag;
+}
+
+void setAllBlack()
+{
+    for (int i=header; i<file_size; i++)
+        img_buf[i] = 0xFF;
+}
+
+void setAllWhite()
+{
+    for (int i=header; i<file_size; i++)
+        img_buf[i] = 0x00;
+}
+
+void drawRectangle(int X1, int Y1, int X2, int Y2)
+{
+    for (int y=Y1; y<=Y2; y++)
+        for (int x=X1; x<=X2; x++)
+            setBlackXY(x,y);
+}
+
+void clearRectangle(int X1, int Y1, int X2, int Y2)
+{
+    for (int y=Y1; y<=Y2; y++)
+        for (int x=X1; x<=X2; x++)
+            setWhiteXY(x,y);
+}
+
+void drawDiagonal(int X1, int Y1, int X2, int Y2, int _dx, int _dy)
+{
+    int dx = (X2 >= X1) ? _dx : -_dx;
+    int dy = (Y2 >= Y1) ? _dy : -_dy;
+    int x = X1;
+    int y = Y1;
+    while (x != X2 && y != Y2) {
+        setBlackXY(x,y);
+        if (x != X2)
+            x += dx;
+        if (y != Y2)
+            y += dy;
+    }
+    setBlackXY(x,y);
+}
+
+void setBlackXY(int x, int y)
+{
+    int loc = (x-1) + (400*(y-1));
+    int bit = loc%8;
+    int ptr = loc/8;
+
+    ptr += header;
+
+    uint8_t op = 0b10000000;
+    op = op >> bit;
+
+    img_buf[ptr] = img_buf[ptr] | op;
+}
+
+void setWhiteXY(int x, int y)
+{
+    int loc = (x-1) + (400*(y-1));
+    int bit = loc%8;
+    int ptr = loc/8;
+
+    ptr += header;
+
+    int op = 0b10000000;
+    op = op >> bit;
+
+    img_buf[ptr] = img_buf[ptr] & (~op);
+}
+
+int drawCharacter(int x, int y, int pt, char c)
+{
+    // pt = font thickness
+    // Print character C, at top left: x,y
+    int px = pt-1; // thickness
+    int l = 6*px; // length
+    int w = 12*px; // width
+    int dx, dy;
+    switch (c) {
+        case 'A':
+        case 'B':
+        case 'C':
+        case 'D':
+        case 'E':
+        case 'F':
+        case 'G':
+        case 'H':
+            drawRectangle(x,y,x+px,y+w);
+            drawRectangle(x,y+w/2,x+l,y+w/2+px);
+            drawRectangle(x+l-px,y,x+l,y+w);
+            break;
+        case 'I':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
+            drawRectangle(x,y+w-px,x+l,y+w);
+            break;
+        case 'J':
+        case 'K':
+            drawRectangle(x,y,x+px,y+w);
+            dx = 1;
+            dy = 1;
+            for (int t=0; t<pt; t++) {
+                drawDiagonal(x,y+w/2+t,x+l,y+t,dx,dy);
+                drawDiagonal(x,y+w/2-t,x+l,y+w-t,dx,dy);
+            }
+            break;
+        case 'L':
+        case 'M':
+            drawRectangle(x,y,x+px,y+w);
+            dx = 1;
+            dy = 1;
+            for (int t=0; t<px; t++) {
+                drawDiagonal(x+t,y,x+l/2+t,y+w/2,dx,dy);
+                drawDiagonal(x+l-t,y,x+l/2-t,y+w/2,dx,dy);
+                drawDiagonal(x,y+t,x+l/2,y+w/2+t,dx,dy);
+                drawDiagonal(x+l,y+t,x+l-l/2,y+w/2+t,dx,dy);
+            }
+            drawRectangle(x+l-px,y,x+l,y+w);
+            break;
+        case 'N':
+        case 'O':
+        case 'P':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x,y,x+px,y+w);
+            drawRectangle(x,y+w/2,x+l,y+w/2+px);
+            drawRectangle(x+l-px,y,x+l,y+w/2);
+            break;
+        case 'Q':
+        case 'R':
+        case 'S':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x,y,x+px,y+w/2);
+            drawRectangle(x,y+w/2,x+l,y+w/2+px);
+            drawRectangle(x+l-px,y+w/2,x+l,y+w);
+            drawRectangle(x,y+w-px,x+l,y+w);
+
+            // makes it different from 5
+            drawRectangle(x+l-px,y,x+l,y+w/4);
+            drawRectangle(x,y+w-w/4,x+px,y+w);
+            break;
+        case 'T':
+        case 'U':
+        case 'V':
+        case 'W':
+        case 'X':
+        case 'Y':
+        case 'Z':
+        case '0':
+            dx = 1;
+            dy = 1;
+            // vert lines
+            drawRectangle(x,y,x+px,y+w);
+            drawRectangle(x+l-px,y,x+l,y+w);
+
+            // horiz lines
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x,y+w-px,x+l,y+w);
+
+            for (int t=0; t<pt; t++)
+                drawDiagonal(x+t,y+w,x+l,y,dx,dy);
+            break;
+        case '1':
+            dx = 1;
+            dy = 1;
+            for (int t=0; t<pt; t++)
+                drawDiagonal(x,y+w/4-t,x+l/2,y,dx,dy);
+            drawRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
+            drawRectangle(x,y+w-px,x+l,y+w);
+            break;
+        case '2':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x,y+w-px,x+l,y+w);
+            drawRectangle(x+l-px,y,x+l,y+w/2);
+            dx = 1;
+            dy = 1;
+            for (int t=0; t<pt; t++)
+                drawDiagonal(x,y+w-t,x+l,y+w/2,dx,dy);
+            break;
+        case '3':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x+l-px,y,x+l,y+w/2);
+            drawRectangle(x,y+w/2,x+l,y+w/2+px);
+            drawRectangle(x+l-px,y+w/2,x+l,y+w);
+            drawRectangle(x,y+w-px,x+l,y+w);
+            break;
+        case '4':
+            drawRectangle(x,y,x+px,y+w/2);
+            drawRectangle(x,y+w/2,x+l,y+w/2+px);
+            drawRectangle(x+l-px,y,x+l,y+w);
+            break;
+        case '5':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x,y,x+px,y+w/2);
+            drawRectangle(x,y+w/2,x+l,y+w/2+px);
+            drawRectangle(x+l-px,y+w/2,x+l,y+w);
+            drawRectangle(x,y+w-px,x+l,y+w);
+            break;
+        case '6':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x,y,x+px,y+w);
+            drawRectangle(x,y+w/2,x+l,y+w/2+px);
+            drawRectangle(x+l-px,y+w/2,x+l,y+w);
+            drawRectangle(x,y+w-px,x+l,y+w);
+            break;
+        case '7':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x+l-px,y,x+l,y+w);
+            break;
+        case '8':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x,y,x+px,y+w);
+            drawRectangle(x,y+w/2,x+l,y+w/2+px);
+            drawRectangle(x+l-px,y,x+l,y+w);
+            drawRectangle(x,y+w-px,x+l,y+w);
+            break;
+        case '9':
+            drawRectangle(x,y,x+l,y+px);
+            drawRectangle(x,y,x+px,y+w/2);
+            drawRectangle(x,y+w/2,x+l,y+w/2+px);
+            drawRectangle(x+l-px,y,x+l,y+w);
+            break;
+        case '/':
+            dx = 1;
+            dy = 1;
+            for (int t=0; t<pt; t++)
+                drawDiagonal(x,y+w/2+t+2*px,x+l,y+t+2*px,dx,dy);
+            break;
+        case ':':
+            drawRectangle(x,y+w/4,x+px,y+w/4+px);
+            drawRectangle(x,y+w-w/4,x+px,y+w-w/4+px);
+            break;
+        default:
+            break;
+    }
+    return x+l;
+}
+
+int drawString(int x, int y, int pt, int sp, char s[], int s_len)
+{
+    // sp = spacing
+    int st = x;
+    for (int i=0; i<s_len; i++) {
+        st = drawCharacter(st, y, pt, s[i]);
+        st += sp + 1;
+    }
+    return st;
+}
+
+void uploadImageBuffer()
+{
+    int Le = 0;
+
+    resetDataPointer();
+
+    for (int i = 0; i*pkt_size < file_size; i++) {
+        do {
+            waitTCBusy();
+            // Send Image Data
+            HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+            // CMD
+            HAL_SPI_TransmitReceive(&hspi1, UploadImageData, rxData, 3, 1000);
+
+            // Image Data
+            HAL_SPI_TransmitReceive(&hspi1, &pkt_size, rxData, 1, 1000);
+
+            for (int j = 0; j < pkt_size; j++)
+            	HAL_SPI_TransmitReceive(&hspi1, &img_buf[i*pkt_size+j], rxData, 1, 1000);
+
+            HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+//            printf("\n\rSend Image Data (0x200100) Sent\n\r");
+
+        } while (readResponse(Le) == 1);
+    }
+}
+
+void resetDataPointer()
+{
+    int Le = 0;
+    waitTCBusy();
+    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+    HAL_SPI_TransmitReceive(&hspi1, ResetDataPointer, rxData, 3, 1000);
+    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+    printf("\n\rReset Data Pointer (0x200D00) Sent\n\r");
+    readResponse(Le);
+}
+
+
+void displayUpdate()
+{
+    int Le = 0;
+    waitTCBusy();
+    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+    HAL_SPI_TransmitReceive(&hspi1, DisplayUpdate, rxData, 3, 1000);
+    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+    printf("\n\rDisplay Update (0x240100) Sent\n\r");
+    readResponse(Le);
+}
+
+void testDraw(int i)
+{
+    int loc;
+    char c[10];
+    setAllWhite();
+    drawString(10,10,5,10,itoa(i,c,10),numPlaces(i));
+    uploadImageBuffer();
+    displayUpdate();
+}
 
 /* USER CODE END PFP */
 
@@ -74,19 +496,19 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 	int LD2_state = 0;
-	uint8_t rxData[4];
-//	uint8_t GetDeviceInfo[8] = {0x3, 0x0, 0x0, 0x1, 0x0, 0x1, 0x1, 0x4};
-//	uint8_t GetSystemInfo[8] = {0x3, 0x1, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0};
-	uint8_t GetSystemInfo[4] = {0x31, 0x01, 0x01, 0x00};
+	int i = 0;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
+  HAL_Delay(250);
 
   /* Configure the system clock */
   SystemClock_Config();
+  HAL_Delay(250);
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -98,6 +520,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   initialise_monitor_handles();
   HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
   HAL_Delay(100);
   /* USER CODE END 2 */
 
@@ -111,32 +534,32 @@ int main(void)
 	  printf("\nTest\n");
 	  HAL_Delay(100);
 
-	  //HAL_SPI_Transmit()
-//	  HAL_SPI_Transmit(&hspi1, GetSystemInfo, 8, 1000);
-//	  HAL_SPI_Receive(&hspi1, rxData, 8, 1000);
+	  // Display Update
 
-	  // Get Device Info
-	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
-	  HAL_Delay(100);
-	  HAL_SPI_TransmitReceive(&hspi1, GetSystemInfo, rxData, 4, 1000);
-	  HAL_Delay(100);
-	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+	  testDraw(i);
+	  i++;
+//	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+//	  HAL_Delay(100);
+//	  // HAL_SPI_Transmit(&hspi1, DisplayUpdate, 3, 1000);
+//	  HAL_SPI_TransmitReceive(&hspi1, DisplayUpdate, rxData, 3, 1000);
+//	  printf("\n%d\n %d\n %d\n", rxData[0], rxData[1], rxData[2]);
+//	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
 
 	  printf("\nEnd of Command\n");
 	  HAL_Delay(100);
 
 
 	  // Listen for Response
-	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
-	  HAL_Delay(100);
-	  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[6], rxData, 1, 1000);
-	  while (rxData[0] != 0x00) {
-		  printf("%x ", rxData[0]);
-		  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[6], rxData, 1, 1000);
-	  }
-	  HAL_Delay(100);
-	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
-	  printf("\nEnd of Response\n");
+//	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+//	  HAL_Delay(100);
+//	  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[3], rxData, 1, 1000);
+//	  while (rxData[0] != 0x00) {
+//		  printf("%x ", rxData[0]);
+//		  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[3], rxData, 1, 1000);
+//	  }
+//	  HAL_Delay(100);
+//	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+//	  printf("\nEnd of Response\n");
 
 
   }
@@ -205,6 +628,7 @@ void SystemClock_Config(void)
 static void MX_ADC1_Init(void)
 {
 
+  ADC_MultiModeTypeDef multimode;
   ADC_ChannelConfTypeDef sConfig;
 
     /**Common config 
@@ -216,6 +640,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DMAContinuousRequests = DISABLE;
@@ -223,6 +648,15 @@ static void MX_ADC1_Init(void)
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+    /**Configure the ADC multi-mode 
+    */
+  multimode.DMAAccessMode = ADC_DMAACCESSMODE_DISABLED;
+  multimode.TwoSamplingDelay = ADC_TWOSAMPLINGDELAY_1CYCLE;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
   {
     Error_Handler();
   }
@@ -274,7 +708,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
@@ -282,7 +716,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi1.Init.CRCPolynomial = 7;
   hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
     Error_Handler();
@@ -342,18 +776,24 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  /*Configure GPIO pin : TC_Busyn_Pin */
+  GPIO_InitStruct.Pin = TC_Busyn_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(TC_Busyn_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : CSn_Pin */
+  GPIO_InitStruct.Pin = CSn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(CSn_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(CSn_GPIO_Port, CSn_Pin, GPIO_PIN_RESET);
 
 }
 

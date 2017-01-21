@@ -16,7 +16,6 @@ C_DEPS :=
 # Every subdirectory with source files must be described here
 SUBDIRS := \
 Drivers/CMSIS/Device/ST/STM32F3xx/Source/Templates/gcc \
-Drivers/CMSIS/Device/ST/STM32F3xx/Source/Templates \
 Drivers/STM32F3xx_HAL_Driver/Src \
 Src \
 

@@ -4,7 +4,7 @@
   * Description        : This file contains the common defines of the application
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2017 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -49,10 +49,14 @@
 #define USART_RX_GPIO_Port GPIOA
 #define LD2_Pin GPIO_PIN_4
 #define LD2_GPIO_Port GPIOA
+#define TC_Busyn_Pin GPIO_PIN_7
+#define TC_Busyn_GPIO_Port GPIOC
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define CSn_Pin GPIO_PIN_6
+#define CSn_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 #define SS1n_Pin  GPIO_PIN_6
 #define SS1n_Port GPIOB
