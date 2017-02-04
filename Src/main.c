@@ -72,6 +72,7 @@ static void MX_SPI1_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleTypeDef* theHcan);
 void init();
 void waitTCBusy();
 int readResponse(int Le);
@@ -468,7 +469,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   //MX_ADC1_Init();
-  //MX_CAN_Init();
+  MX_CAN_Init();
   MX_SPI1_Init();
 
   /* USER CODE BEGIN 2 */
@@ -604,21 +605,58 @@ static void MX_ADC1_Init(void)
 static void MX_CAN_Init(void)
 {
 
+//  hcan.Instance = CAN;
+//  hcan.Init.Prescaler = 2;
+//  hcan.Init.Mode = CAN_MODE_NORMAL;
+//  hcan.Init.SJW = CAN_SJW_1TQ;
+//  hcan.Init.BS1 = CAN_BS1_13TQ;
+//  hcan.Init.BS2 = CAN_BS2_2TQ;
+//  hcan.Init.TTCM = DISABLE;
+//  hcan.Init.ABOM = DISABLE;
+//  hcan.Init.AWUM = DISABLE;
+//  hcan.Init.NART = DISABLE;
+//  hcan.Init.RFLM = DISABLE;
+//  hcan.Init.TXFP = DISABLE;
+//  if (HAL_CAN_Init(&hcan) != HAL_OK)
+//  {
+//    Error_Handler();
+//  }
+//
+
+  __HAL_RCC_CAN1_CLK_ENABLE();
   hcan.Instance = CAN;
-  hcan.Init.Prescaler = 2;
   hcan.Init.Mode = CAN_MODE_NORMAL;
-  hcan.Init.SJW = CAN_SJW_1TQ;
-  hcan.Init.BS1 = CAN_BS1_13TQ;
-  hcan.Init.BS2 = CAN_BS2_2TQ;
+  setCANbitRate(125, 32, &hcan);
   hcan.Init.TTCM = DISABLE;
   hcan.Init.ABOM = DISABLE;
   hcan.Init.AWUM = DISABLE;
   hcan.Init.NART = DISABLE;
   hcan.Init.RFLM = DISABLE;
   hcan.Init.TXFP = DISABLE;
+  static CanTxMsgTypeDef TxMessage;
+  static CanRxMsgTypeDef RxMessage;
+  hcan.pTxMsg = &TxMessage;
+  hcan.pRxMsg = &RxMessage;
   if (HAL_CAN_Init(&hcan) != HAL_OK)
   {
-    Error_Handler();
+	  Error_Handler();
+  }
+  CAN_FilterConfTypeDef canFilterConfig;
+  canFilterConfig.FilterNumber = 0;
+  canFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+  canFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+  canFilterConfig.FilterIdHigh = 0x0000;
+  canFilterConfig.FilterIdLow = 0x0000;
+  canFilterConfig.FilterMaskIdHigh = 0x0000;
+  canFilterConfig.FilterMaskIdLow = 0x0000;
+  canFilterConfig.FilterFIFOAssignment = 0;
+  canFilterConfig.FilterActivation = ENABLE;
+  canFilterConfig.BankNumber = 14;
+  if(HAL_CAN_ConfigFilter(&hcan, &canFilterConfig) != HAL_OK) {
+	  Error_Handler();
+  }
+  if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
+	  Error_Handler();
   }
 
 }
@@ -722,7 +760,56 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleTypeDef* theHcan) {
+	uint8_t prescaleFactor = 0;
+	switch (periphClock) {
+	case 32:
+		theHcan->Init.BS1 = CAN_BS1_13TQ;
+		theHcan->Init.BS2 = CAN_BS2_2TQ;
+		prescaleFactor = 2;
+		break;
+	case 45:
+		theHcan->Init.BS1 = CAN_BS1_12TQ;
+		theHcan->Init.BS2 = CAN_BS2_2TQ;
+		prescaleFactor = 3;
+		break;
+	case 48:
+		theHcan->Init.BS1 = CAN_BS1_11TQ;
+		theHcan->Init.BS2 = CAN_BS2_4TQ;
+		prescaleFactor = 3;
+		break;
+	}
+	theHcan->Init.SJW = CAN_SJW_1TQ;
+	switch (bitRate) {
+	case 1000:
+		theHcan->Init.Prescaler = prescaleFactor * 1;
+		break;
+	case 500:
+		theHcan->Init.Prescaler = prescaleFactor * 2;
+		break;
+	case 250:
+		theHcan->Init.Prescaler = prescaleFactor * 4;
+		break;
+	case 125:
+		theHcan->Init.Prescaler = prescaleFactor * 8;
+		break;
+	case 100:
+		theHcan->Init.Prescaler = prescaleFactor * 10;
+		break;
+	case 83:
+		theHcan->Init.Prescaler = prescaleFactor * 12;
+		break;
+	case 50:
+		theHcan->Init.Prescaler = prescaleFactor * 20;
+		break;
+	case 20:
+		theHcan->Init.Prescaler = prescaleFactor * 50;
+		break;
+	case 10:
+		theHcan->Init.Prescaler = prescaleFactor * 100;
+		break;
+	}
+}
 /* USER CODE END 4 */
 
 /**
