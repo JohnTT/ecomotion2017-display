@@ -59,6 +59,8 @@ uint8_t GetSystemInfo[4] = {0x31, 0x01, 0x01, 0x00};
 uint8_t DisplayUpdate[3] = {0x24, 0x01, 0x00};
 uint8_t UploadImageData[3] = {0x20, 0x01, 0x00};
 uint8_t ResetDataPointer[3] = {0x20, 0x0D, 0x00};
+int value = 0;
+int flag = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -89,6 +91,7 @@ void drawDiagonal(int X1, int Y1, int X2, int Y2, int dx, int dy);
 int drawCharacter(int x, int y, int pt, char c);
 int drawString(int x, int y, int pt, int sp, char s[], int size);
 void testDraw();
+void delay(int x);
 // Functions defined for the TCM 441-230
 void uploadImageBuffer();
 void resetDataPointer();
@@ -101,6 +104,12 @@ void readSensorData();
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+void delay(int x)
+{
+	int m;
+	for (m = 0; m < x*10000; m++);
+}
+
 int numPlaces (int n)
 {
     if (n < 10) return 1;
@@ -144,11 +153,12 @@ void waitTCBusy()
 {
 	uint8_t rx;
     HAL_Delay(10);
+
     rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
     while (!rx) {
         // printf("\n\rTC Busy\n\r");
     	rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
-        HAL_Delay(10);
+    	HAL_Delay(10);
     }
 }
 int readResponse(int Le)
@@ -443,8 +453,9 @@ void testDraw(int i)
 {
     int loc;
     char c[10];
+    int x = i*100/4096;
     setAllWhite();
-    drawString(10,10,5,10,itoa(i,c,10),numPlaces(i));
+    drawString(10,10,5,10,itoa(x,c,10),numPlaces(x));
     uploadImageBuffer();
     displayUpdate();
 }
@@ -454,7 +465,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  int i = 0;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -483,10 +494,25 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-	  HAL_Delay(100);
 	  // Display Update
-	  testDraw(i);
-	  i++;
+	  if (flag)
+	  {
+		  flag = 0;
+		  testDraw(value);
+	  }
+
+	  HAL_StatusTypeDef status;
+	  hcan.pTxMsg->IDE = CAN_ID_STD;
+	  hcan.pTxMsg->RTR = CAN_RTR_DATA;
+	  hcan.pTxMsg->StdId = 0x124;
+	  hcan.pTxMsg->Data[0] = 1;
+	  hcan.pTxMsg->DLC = 3;
+
+	  status = HAL_CAN_Transmit_IT(&hcan);
+	  if (status != HAL_OK) {
+		  // Error_Handler();
+		  value = 404;
+	  }
   }
   /* USER CODE END 3 */
 
@@ -621,12 +647,12 @@ static void MX_CAN_Init(void)
 //  {
 //    Error_Handler();
 //  }
-//
+
 
   __HAL_RCC_CAN1_CLK_ENABLE();
   hcan.Instance = CAN;
   hcan.Init.Mode = CAN_MODE_NORMAL;
-  setCANbitRate(125, 32, &hcan);
+  setCANbitRate(1000, 32, &hcan);
   hcan.Init.TTCM = DISABLE;
   hcan.Init.ABOM = DISABLE;
   hcan.Init.AWUM = DISABLE;
@@ -808,6 +834,22 @@ static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleType
 	case 10:
 		theHcan->Init.Prescaler = prescaleFactor * 100;
 		break;
+	}
+}
+
+void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* theHcan) {
+//	Error_Handler();
+//	int i = 10;
+//	testDraw(i);
+}
+
+void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
+	value = theHcan->pRxMsg->Data[1]*256;
+	value += theHcan->pRxMsg->Data[2];
+	flag = 1;
+
+	if (HAL_CAN_Receive_IT(theHcan, CAN_FIFO0) != HAL_OK) {
+		Error_Handler();
 	}
 }
 /* USER CODE END 4 */
