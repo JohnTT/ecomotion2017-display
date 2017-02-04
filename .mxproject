@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=C:/Users/jmc_t/Documents/Git/stm32cubemx_f303re/Inc
+HeaderPath=C:/Users/Erik/workspace/fixSPIforDisplay/Inc
 HeaderFiles=stm32f3xx_it.h;stm32f3xx_hal_conf.h;main.h;
-SourcePath=C:/Users/jmc_t/Documents/Git/stm32cubemx_f303re/Src
+SourcePath=C:/Users/Erik/workspace/fixSPIforDisplay/Src
 SourceFiles=stm32f3xx_it.h;stm32f3xx_hal_conf.h;main.h;stm32f3xx_it.c;stm32f3xx_hal_msp.c;main.c;
 
 [PreviousLibFiles]

@@ -35,6 +35,7 @@
 #include "stm32f3xx_hal.h"
 
 /* USER CODE BEGIN Includes */
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -71,7 +72,6 @@ static void MX_SPI1_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-// Functions defined by user
 void init();
 void waitTCBusy();
 int readResponse(int Le);
@@ -88,8 +88,6 @@ void drawDiagonal(int X1, int Y1, int X2, int Y2, int dx, int dy);
 int drawCharacter(int x, int y, int pt, char c);
 int drawString(int x, int y, int pt, int sp, char s[], int size);
 void testDraw();
-
-
 // Functions defined for the TCM 441-230
 void uploadImageBuffer();
 void resetDataPointer();
@@ -99,7 +97,9 @@ void getDeviceID();
 void getSystemInfo();
 void getSystemVersionCode();
 void readSensorData();
+/* USER CODE END PFP */
 
+/* USER CODE BEGIN 0 */
 int numPlaces (int n)
 {
     if (n < 10) return 1;
@@ -115,8 +115,6 @@ int numPlaces (int n)
        and adjust this final return as well. */
     return 10;
 }
-
-
 char *itoa (int value, char *result, int base)
 {
     // check that the base if valid
@@ -124,16 +122,13 @@ char *itoa (int value, char *result, int base)
         *result = '\0';
         return result;
     }
-
     char* ptr = result, *ptr1 = result, tmp_char;
     int tmp_value;
-
     do {
         tmp_value = value;
         value /= base;
         *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
     } while ( value );
-
     // Apply negative sign
     if (tmp_value < 0) *ptr++ = '-';
     *ptr-- = '\0';
@@ -144,7 +139,6 @@ char *itoa (int value, char *result, int base)
     }
     return result;
 }
-
 void waitTCBusy()
 {
 	uint8_t rx;
@@ -156,14 +150,12 @@ void waitTCBusy()
         HAL_Delay(10);
     }
 }
-
 int readResponse(int Le)
 {
     int flag = 0;
-
     int rx;
     waitTCBusy();
-    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
     for (int i=0; i<Le+2; i++) {
     	HAL_SPI_TransmitReceive(&hspi1, &tx, &rx, 1, 1000);
 //        printf(" **%x ", (uint8_t)rxData);
@@ -172,37 +164,32 @@ int readResponse(int Le)
         if (i == 1 && (uint8_t)rx != 0x00)
             flag = 1;
     }
-    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
 //    printf("\n\rEnd of Response %d\n\r", flag);
     return flag;
 }
-
 void setAllBlack()
 {
     for (int i=header; i<file_size; i++)
         img_buf[i] = 0xFF;
 }
-
 void setAllWhite()
 {
     for (int i=header; i<file_size; i++)
         img_buf[i] = 0x00;
 }
-
 void drawRectangle(int X1, int Y1, int X2, int Y2)
 {
     for (int y=Y1; y<=Y2; y++)
         for (int x=X1; x<=X2; x++)
             setBlackXY(x,y);
 }
-
 void clearRectangle(int X1, int Y1, int X2, int Y2)
 {
     for (int y=Y1; y<=Y2; y++)
         for (int x=X1; x<=X2; x++)
             setWhiteXY(x,y);
 }
-
 void drawDiagonal(int X1, int Y1, int X2, int Y2, int _dx, int _dy)
 {
     int dx = (X2 >= X1) ? _dx : -_dx;
@@ -218,35 +205,26 @@ void drawDiagonal(int X1, int Y1, int X2, int Y2, int _dx, int _dy)
     }
     setBlackXY(x,y);
 }
-
 void setBlackXY(int x, int y)
 {
     int loc = (x-1) + (400*(y-1));
     int bit = loc%8;
     int ptr = loc/8;
-
     ptr += header;
-
     uint8_t op = 0b10000000;
     op = op >> bit;
-
     img_buf[ptr] = img_buf[ptr] | op;
 }
-
 void setWhiteXY(int x, int y)
 {
     int loc = (x-1) + (400*(y-1));
     int bit = loc%8;
     int ptr = loc/8;
-
     ptr += header;
-
     int op = 0b10000000;
     op = op >> bit;
-
     img_buf[ptr] = img_buf[ptr] & (~op);
 }
-
 int drawCharacter(int x, int y, int pt, char c)
 {
     // pt = font thickness
@@ -312,7 +290,6 @@ int drawCharacter(int x, int y, int pt, char c)
             drawRectangle(x,y+w/2,x+l,y+w/2+px);
             drawRectangle(x+l-px,y+w/2,x+l,y+w);
             drawRectangle(x,y+w-px,x+l,y+w);
-
             // makes it different from 5
             drawRectangle(x+l-px,y,x+l,y+w/4);
             drawRectangle(x,y+w-w/4,x+px,y+w);
@@ -330,11 +307,9 @@ int drawCharacter(int x, int y, int pt, char c)
             // vert lines
             drawRectangle(x,y,x+px,y+w);
             drawRectangle(x+l-px,y,x+l,y+w);
-
             // horiz lines
             drawRectangle(x,y,x+l,y+px);
             drawRectangle(x,y+w-px,x+l,y+w);
-
             for (int t=0; t<pt; t++)
                 drawDiagonal(x+t,y+w,x+l,y,dx,dy);
             break;
@@ -413,7 +388,6 @@ int drawCharacter(int x, int y, int pt, char c)
     }
     return x+l;
 }
-
 int drawString(int x, int y, int pt, int sp, char s[], int s_len)
 {
     // sp = spacing
@@ -424,57 +398,46 @@ int drawString(int x, int y, int pt, int sp, char s[], int s_len)
     }
     return st;
 }
-
 void uploadImageBuffer()
 {
     int Le = 0;
-
     resetDataPointer();
-
     for (int i = 0; i*pkt_size < file_size; i++) {
         do {
             waitTCBusy();
             // Send Image Data
-            HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
             // CMD
             HAL_SPI_TransmitReceive(&hspi1, UploadImageData, rxData, 3, 1000);
-
             // Image Data
             HAL_SPI_TransmitReceive(&hspi1, &pkt_size, rxData, 1, 1000);
-
             for (int j = 0; j < pkt_size; j++)
             	HAL_SPI_TransmitReceive(&hspi1, &img_buf[i*pkt_size+j], rxData, 1, 1000);
-
-            HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
 //            printf("\n\rSend Image Data (0x200100) Sent\n\r");
-
         } while (readResponse(Le) == 1);
     }
 }
-
 void resetDataPointer()
 {
     int Le = 0;
     waitTCBusy();
-    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
     HAL_SPI_TransmitReceive(&hspi1, ResetDataPointer, rxData, 3, 1000);
-    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
-    printf("\n\rReset Data Pointer (0x200D00) Sent\n\r");
+    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
+//    printf("\n\rReset Data Pointer (0x200D00) Sent\n\r");
     readResponse(Le);
 }
-
-
 void displayUpdate()
 {
     int Le = 0;
     waitTCBusy();
-    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
     HAL_SPI_TransmitReceive(&hspi1, DisplayUpdate, rxData, 3, 1000);
-    HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
-    printf("\n\rDisplay Update (0x240100) Sent\n\r");
+    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
+//    printf("\n\rDisplay Update (0x240100) Sent\n\r");
     readResponse(Le);
 }
-
 void testDraw(int i)
 {
     int loc;
@@ -484,44 +447,32 @@ void testDraw(int i)
     uploadImageBuffer();
     displayUpdate();
 }
-
-/* USER CODE END PFP */
-
-/* USER CODE BEGIN 0 */
-extern void initialise_monitor_handles(void);
 /* USER CODE END 0 */
 
 int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	int LD2_state = 0;
-	int i = 0;
-
+  int i = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-  HAL_Delay(250);
 
   /* Configure the system clock */
   SystemClock_Config();
-  HAL_Delay(250);
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_ADC1_Init();
-  MX_CAN_Init();
+  //MX_ADC1_Init();
+  //MX_CAN_Init();
   MX_SPI1_Init();
 
   /* USER CODE BEGIN 2 */
-  initialise_monitor_handles();
-  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-  HAL_Delay(100);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -531,37 +482,10 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-	  printf("\nTest\n");
 	  HAL_Delay(100);
-
 	  // Display Update
-
 	  testDraw(i);
 	  i++;
-//	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
-//	  HAL_Delay(100);
-//	  // HAL_SPI_Transmit(&hspi1, DisplayUpdate, 3, 1000);
-//	  HAL_SPI_TransmitReceive(&hspi1, DisplayUpdate, rxData, 3, 1000);
-//	  printf("\n%d\n %d\n %d\n", rxData[0], rxData[1], rxData[2]);
-//	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
-
-	  printf("\nEnd of Command\n");
-	  HAL_Delay(100);
-
-
-	  // Listen for Response
-//	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_RESET);
-//	  HAL_Delay(100);
-//	  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[3], rxData, 1, 1000);
-//	  while (rxData[0] != 0x00) {
-//		  printf("%x ", rxData[0]);
-//		  HAL_SPI_TransmitReceive(&hspi1, &GetSystemInfo[3], rxData, 1, 1000);
-//	  }
-//	  HAL_Delay(100);
-//	  HAL_GPIO_WritePin(SS1n_Port, SS1n_Pin, GPIO_PIN_SET);
-//	  printf("\nEnd of Response\n");
-
-
   }
   /* USER CODE END 3 */
 
@@ -763,6 +687,12 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
@@ -783,17 +713,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(TC_Busyn_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : CSn_Pin */
-  GPIO_InitStruct.Pin = CSn_Pin;
+  GPIO_InitStruct.Pin = SPI1_CSn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(CSn_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CSn_GPIO_Port, CSn_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_Init(SPI1_CSn_GPIO_Port, &GPIO_InitStruct);
 
 }
 

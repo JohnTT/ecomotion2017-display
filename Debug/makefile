@@ -8,18 +8,18 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include startup/subdir.mk
 -include Src/subdir.mk
 -include Drivers/STM32F3xx_HAL_Driver/Src/subdir.mk
--include Drivers/CMSIS/Device/ST/STM32F3xx/Source/Templates/gcc/subdir.mk
 -include subdir.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(strip $(S_UPPER_DEPS)),)
--include $(S_UPPER_DEPS)
-endif
 ifneq ($(strip $(C_DEPS)),)
 -include $(C_DEPS)
+endif
+ifneq ($(strip $(S_UPPER_DEPS)),)
+-include $(S_UPPER_DEPS)
 endif
 endif
 
@@ -28,13 +28,13 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: stm32cubemx_f303re.elf
+all: fixSPIforDisplay.elf
 
 # Tool invocations
-stm32cubemx_f303re.elf: $(OBJS) $(USER_OBJS)
+fixSPIforDisplay.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU GCC Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -specs=nosys.specs -specs=nano.specs -specs=rdimon.specs -lc -lrdimon -T"../STM32F303RETx_FLASH.ld" -Wl,-Map=output.map -Wl,--gc-sections -lm -o "stm32cubemx_f303re.elf" @"objects.list" $(USER_OBJS) $(LIBS)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -specs=nosys.specs -specs=nano.specs -T"../STM32F303RETx_FLASH.ld" -Wl,-Map=output.map -Wl,--gc-sections -lm -o "fixSPIforDisplay.elf" @"objects.list" $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
@@ -46,8 +46,8 @@ clean:
 
 post-build:
 	-@echo 'Generating binary and Printing size information:'
-	arm-none-eabi-objcopy -O binary "stm32cubemx_f303re.elf" "stm32cubemx_f303re.bin"
-	arm-none-eabi-size "stm32cubemx_f303re.elf"
+	arm-none-eabi-objcopy -O binary "fixSPIforDisplay.elf" "fixSPIforDisplay.bin"
+	arm-none-eabi-size "fixSPIforDisplay.elf"
 	-@echo ' '
 
 .PHONY: all clean dependents

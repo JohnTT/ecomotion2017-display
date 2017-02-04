@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file      startup_stm32f303xe.s
   * @author    MCD Application Team
-  * @version   V2.3.0
-  * @date      29-April-2015
+  * @version   V2.3.1
+  * @date      16-December-2016
   * @brief     STM32F303xE devices vector table for Atollic 
   *            TrueSTUDIO toolchain.
   *            This module performs:
