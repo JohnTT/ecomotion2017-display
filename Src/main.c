@@ -60,6 +60,7 @@ uint8_t DisplayUpdate[3] = {0x24, 0x01, 0x00};
 uint8_t UploadImageData[3] = {0x20, 0x01, 0x00};
 uint8_t ResetDataPointer[3] = {0x20, 0x0D, 0x00};
 int value = 0;
+int realspeed = 0; // Real Wheel speed
 int flag = 0;
 /* USER CODE END PV */
 
@@ -456,6 +457,12 @@ void testDraw(int i)
     int x = i*100/4096;
     setAllWhite();
     drawString(10,10,5,10,itoa(x,c,10),numPlaces(x));
+    itoa(realspeed,c,10);
+    c[4] = 'K';
+    c[5] = 'M';
+    c[6] = '/';
+    c[7] = 'H';
+    drawString(100,100,5,10,c,10);
     uploadImageBuffer();
     displayUpdate();
 }
@@ -501,18 +508,19 @@ int main(void)
 		  testDraw(value);
 	  }
 
-	  HAL_StatusTypeDef status;
-	  hcan.pTxMsg->IDE = CAN_ID_STD;
-	  hcan.pTxMsg->RTR = CAN_RTR_DATA;
-	  hcan.pTxMsg->StdId = 0x124;
-	  hcan.pTxMsg->Data[0] = 1;
-	  hcan.pTxMsg->DLC = 3;
-
-	  status = HAL_CAN_Transmit_IT(&hcan);
-	  if (status != HAL_OK) {
-		  // Error_Handler();
-		  value = 404;
-	  }
+	  HAL_Delay(100);
+//	  HAL_StatusTypeDef status;
+//	  hcan.pTxMsg->IDE = CAN_ID_STD;
+//	  hcan.pTxMsg->RTR = CAN_RTR_DATA;
+//	  hcan.pTxMsg->StdId = 0x124;
+//	  hcan.pTxMsg->Data[0] = 1;
+//	  hcan.pTxMsg->DLC = 3;
+//
+//	  status = HAL_CAN_Transmit_IT(&hcan);
+//	  if (status != HAL_OK) {
+//		  // Error_Handler();
+//		  value = 404;
+//	  }
   }
   /* USER CODE END 3 */
 
@@ -847,6 +855,7 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
 	value = theHcan->pRxMsg->Data[1]*256;
 	value += theHcan->pRxMsg->Data[2];
 	flag = 1;
+	realspeed = theHcan->pRxMsg->Data[0];
 
 	if (HAL_CAN_Receive_IT(theHcan, CAN_FIFO0) != HAL_OK) {
 		Error_Handler();
