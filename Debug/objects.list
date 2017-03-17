@@ -22,5 +22,6 @@
 "Src/main.o"
 "Src/stm32f3xx_hal_msp.o"
 "Src/stm32f3xx_it.o"
+"Src/syscalls.o"
 "Src/system_stm32f3xx.o"
 "startup/startup_stm32f303xe.o"

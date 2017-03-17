@@ -62,6 +62,7 @@ uint8_t ResetDataPointer[3] = {0x20, 0x0D, 0x00};
 int value = 0;
 int realspeed = 0; // Real Wheel speed
 int flag = 0;
+char strConvert[100];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -113,7 +114,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  int counter = 1;
+	int counter = 1;
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -127,7 +128,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  //MX_ADC1_Init();
+  MX_ADC1_Init();
   MX_CAN_Init();
   MX_SPI1_Init();
 
@@ -137,33 +138,23 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1)
+	{
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-	  // Display Update
-	  if (1)
-	  {
-		  flag = 0;
-		  testDraw(counter);
-		  counter *= 2;
-	  }
 
-	  HAL_Delay(100);
-//	  HAL_StatusTypeDef status;
-//	  hcan.pTxMsg->IDE = CAN_ID_STD;
-//	  hcan.pTxMsg->RTR = CAN_RTR_DATA;
-//	  hcan.pTxMsg->StdId = 0x124;
-//	  hcan.pTxMsg->Data[0] = 1;
-//	  hcan.pTxMsg->DLC = 3;
-//
-//	  status = HAL_CAN_Transmit_IT(&hcan);
-//	  if (status != HAL_OK) {
-//		  // Error_Handler();
-//		  value = 404;
-//	  }
-  }
+		printf("Test");
+		printf("\n\r");
+//		flag = 0;
+//		testDraw(counter);
+//		counter *= 2;
+
+
+
+
+		HAL_Delay(1000);
+	}
   /* USER CODE END 3 */
 
 }
@@ -280,61 +271,41 @@ static void MX_ADC1_Init(void)
 /* CAN init function */
 static void MX_CAN_Init(void)
 {
-
-//  hcan.Instance = CAN;
-//  hcan.Init.Prescaler = 2;
-//  hcan.Init.Mode = CAN_MODE_NORMAL;
-//  hcan.Init.SJW = CAN_SJW_1TQ;
-//  hcan.Init.BS1 = CAN_BS1_13TQ;
-//  hcan.Init.BS2 = CAN_BS2_2TQ;
-//  hcan.Init.TTCM = DISABLE;
-//  hcan.Init.ABOM = DISABLE;
-//  hcan.Init.AWUM = DISABLE;
-//  hcan.Init.NART = DISABLE;
-//  hcan.Init.RFLM = DISABLE;
-//  hcan.Init.TXFP = DISABLE;
-//  if (HAL_CAN_Init(&hcan) != HAL_OK)
-//  {
-//    Error_Handler();
-//  }
-
-
-  __HAL_RCC_CAN1_CLK_ENABLE();
-  hcan.Instance = CAN;
-  hcan.Init.Mode = CAN_MODE_NORMAL;
-  setCANbitRate(1000, 32, &hcan);
-  hcan.Init.TTCM = DISABLE;
-  hcan.Init.ABOM = DISABLE;
-  hcan.Init.AWUM = DISABLE;
-  hcan.Init.NART = DISABLE;
-  hcan.Init.RFLM = DISABLE;
-  hcan.Init.TXFP = DISABLE;
-  static CanTxMsgTypeDef TxMessage;
-  static CanRxMsgTypeDef RxMessage;
-  hcan.pTxMsg = &TxMessage;
-  hcan.pRxMsg = &RxMessage;
-  if (HAL_CAN_Init(&hcan) != HAL_OK)
-  {
-	  Error_Handler();
-  }
-  CAN_FilterConfTypeDef canFilterConfig;
-  canFilterConfig.FilterNumber = 0;
-  canFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
-  canFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-  canFilterConfig.FilterIdHigh = 0x0000;
-  canFilterConfig.FilterIdLow = 0x0000;
-  canFilterConfig.FilterMaskIdHigh = 0x0000;
-  canFilterConfig.FilterMaskIdLow = 0x0000;
-  canFilterConfig.FilterFIFOAssignment = 0;
-  canFilterConfig.FilterActivation = ENABLE;
-  canFilterConfig.BankNumber = 14;
-  if(HAL_CAN_ConfigFilter(&hcan, &canFilterConfig) != HAL_OK) {
-	  Error_Handler();
-  }
-  if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
-	  Error_Handler();
-  }
-
+	__HAL_RCC_CAN1_CLK_ENABLE();
+	hcan.Instance = CAN;
+	hcan.Init.Mode = CAN_MODE_NORMAL;
+	setCANbitRate(1000, 32, &hcan);
+	hcan.Init.TTCM = DISABLE;
+	hcan.Init.ABOM = DISABLE;
+	hcan.Init.AWUM = DISABLE;
+	hcan.Init.NART = DISABLE;
+	hcan.Init.RFLM = DISABLE;
+	hcan.Init.TXFP = DISABLE;
+	static CanTxMsgTypeDef TxMessage;
+	static CanRxMsgTypeDef RxMessage;
+	hcan.pTxMsg = &TxMessage;
+	hcan.pRxMsg = &RxMessage;
+	if (HAL_CAN_Init(&hcan) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	CAN_FilterConfTypeDef canFilterConfig;
+	canFilterConfig.FilterNumber = 0;
+	canFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	canFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	canFilterConfig.FilterIdHigh = 0x0000;
+	canFilterConfig.FilterIdLow = 0x0000;
+	canFilterConfig.FilterMaskIdHigh = 0x0000;
+	canFilterConfig.FilterMaskIdLow = 0x0000;
+	canFilterConfig.FilterFIFOAssignment = 0;
+	canFilterConfig.FilterActivation = ENABLE;
+	canFilterConfig.BankNumber = 14;
+	if(HAL_CAN_ConfigFilter(&hcan, &canFilterConfig) != HAL_OK) {
+		Error_Handler();
+	}
+	if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
+		Error_Handler();
+	}
 }
 
 /* SPI1 init function */
@@ -367,8 +338,8 @@ static void MX_USART2_UART_Init(void)
 {
 
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 38400;
-  huart2.Init.WordLength = UART_WORDLENGTH_7B;
+  huart2.Init.BaudRate = 9600;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
   huart2.Init.Mode = UART_MODE_TX_RX;
@@ -399,10 +370,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
@@ -413,25 +380,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pin : SPI1_CSn_Pin */
+  GPIO_InitStruct.Pin = SPI1_CSn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(SPI1_CSn_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : TC_Busyn_Pin */
   GPIO_InitStruct.Pin = TC_Busyn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(TC_Busyn_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : CSn_Pin */
-  GPIO_InitStruct.Pin = SPI1_CSn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SPI1_CSn_GPIO_Port, &GPIO_InitStruct);
 
 }
 
@@ -486,21 +446,7 @@ static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleType
 		break;
 	}
 }
-void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* theHcan) {
-//	Error_Handler();
-//	int i = 10;
-//	testDraw(i);
-}
-void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
-	value = theHcan->pRxMsg->Data[1]*256;
-	value += theHcan->pRxMsg->Data[2];
-	flag = 1;
-	realspeed = theHcan->pRxMsg->Data[0];
 
-	if (HAL_CAN_Receive_IT(theHcan, CAN_FIFO0) != HAL_OK) {
-		Error_Handler();
-	}
-}
 void delay(int x)
 {
 	int m;
@@ -508,559 +454,625 @@ void delay(int x)
 }
 int numPlaces (int n)
 {
-    if (n < 10) return 1;
-    if (n < 100) return 2;
-    if (n < 1000) return 3;
-    if (n < 10000) return 4;
-    if (n < 100000) return 5;
-    if (n < 1000000) return 6;
-    if (n < 10000000) return 7;
-    if (n < 100000000) return 8;
-    if (n < 1000000000) return 9;
-    /*      2147483647 is 2^31-1 - add more ifs as needed
+	if (n < 10) return 1;
+	if (n < 100) return 2;
+	if (n < 1000) return 3;
+	if (n < 10000) return 4;
+	if (n < 100000) return 5;
+	if (n < 1000000) return 6;
+	if (n < 10000000) return 7;
+	if (n < 100000000) return 8;
+	if (n < 1000000000) return 9;
+	/*      2147483647 is 2^31-1 - add more ifs as needed
        and adjust this final return as well. */
-    return 10;
+	return 10;
 }
 char *itoa (int value, char *result, int base)
 {
-    // check that the base if valid
-    if (base < 2 || base > 36) {
-        *result = '\0';
-        return result;
-    }
-    char* ptr = result, *ptr1 = result, tmp_char;
-    int tmp_value;
-    do {
-        tmp_value = value;
-        value /= base;
-        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
-    } while ( value );
-    // Apply negative sign
-    if (tmp_value < 0) *ptr++ = '-';
-    *ptr-- = '\0';
-    while (ptr1 < ptr) {
-        tmp_char = *ptr;
-        *ptr--= *ptr1;
-        *ptr1++ = tmp_char;
-    }
-    return result;
+	// check that the base if valid
+	if (base < 2 || base > 36) {
+		*result = '\0';
+		return result;
+	}
+	char* ptr = result, *ptr1 = result, tmp_char;
+	int tmp_value;
+	do {
+		tmp_value = value;
+		value /= base;
+		*ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+	} while ( value );
+	// Apply negative sign
+	if (tmp_value < 0) *ptr++ = '-';
+	*ptr-- = '\0';
+	while (ptr1 < ptr) {
+		tmp_char = *ptr;
+		*ptr--= *ptr1;
+		*ptr1++ = tmp_char;
+	}
+	return result;
 }
 void waitTCBusy()
 {
 	uint8_t rx;
-    HAL_Delay(10);
+	HAL_Delay(10);
 
-    rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
-    while (!rx) {
-        // printf("\n\rTC Busy\n\r");
-    	rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
-    	HAL_Delay(10);
-    }
+	rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
+	while (!rx) {
+		// printf("\n\rTC Busy\n\r");
+		rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
+		HAL_Delay(10);
+	}
 }
 int readResponse(int Le)
 {
-    int flag = 0;
-    int rx;
-    waitTCBusy();
-    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-    for (int i=0; i<Le+2; i++) {
-    	HAL_SPI_TransmitReceive(&hspi1, &tx, &rx, 1, 1000);
-//        printf(" **%x ", (uint8_t)rxData);
-        if (i == 0 && (uint8_t)rx != 0x90)
-            flag = 1;
-        if (i == 1 && (uint8_t)rx != 0x00)
-            flag = 1;
-    }
-    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-//    printf("\n\rEnd of Response %d\n\r", flag);
-    return flag;
+	int flag = 0;
+	int rx;
+	waitTCBusy();
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+	for (int i=0; i<Le+2; i++) {
+		HAL_SPI_TransmitReceive(&hspi1, &tx, &rx, 1, 1000);
+		//        printf(" **%x ", (uint8_t)rxData);
+		if (i == 0 && (uint8_t)rx != 0x90)
+			flag = 1;
+		if (i == 1 && (uint8_t)rx != 0x00)
+			flag = 1;
+	}
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
+	//    printf("\n\rEnd of Response %d\n\r", flag);
+	return flag;
 }
 void setAllBlack()
 {
-    for (int i=header; i<file_size; i++)
-        img_buf[i] = 0xFF;
+	for (int i=header; i<file_size; i++)
+		img_buf[i] = 0xFF;
 }
 void setAllWhite()
 {
-    for (int i=header; i<file_size; i++)
-        img_buf[i] = 0x00;
+	for (int i=header; i<file_size; i++)
+		img_buf[i] = 0x00;
 }
 void drawRectangle(int X1, int Y1, int X2, int Y2)
 {
-    for (int y=Y1; y<=Y2; y++)
-        for (int x=X1; x<=X2; x++)
-            setBlackXY(x,y);
+	for (int y=Y1; y<=Y2; y++)
+		for (int x=X1; x<=X2; x++)
+			setBlackXY(x,y);
 }
 void drawWhiteRectangle(int X1, int Y1, int X2, int Y2)
 {
-    for (int y=Y1; y<=Y2; y++)
-        for (int x=X1; x<=X2; x++)
-            setWhiteXY(x,y);
+	for (int y=Y1; y<=Y2; y++)
+		for (int x=X1; x<=X2; x++)
+			setWhiteXY(x,y);
 }
 void clearRectangle(int X1, int Y1, int X2, int Y2)
 {
-    for (int y=Y1; y<=Y2; y++)
-        for (int x=X1; x<=X2; x++)
-            setWhiteXY(x,y);
+	for (int y=Y1; y<=Y2; y++)
+		for (int x=X1; x<=X2; x++)
+			setWhiteXY(x,y);
 }
 void drawDiagonal(int X1, int Y1, int X2, int Y2, int _dx, int _dy)
 {
-    int dx = (X2 >= X1) ? _dx : -_dx;
-    int dy = (Y2 >= Y1) ? _dy : -_dy;
-    int x = X1;
-    int y = Y1;
-    while (x != X2 && y != Y2) {
-        setBlackXY(x,y);
-        if (x != X2)
-            x += dx;
-        if (y != Y2)
-            y += dy;
-    }
-    setBlackXY(x,y);
+	int dx = (X2 >= X1) ? _dx : -_dx;
+	int dy = (Y2 >= Y1) ? _dy : -_dy;
+	int x = X1;
+	int y = Y1;
+	while (x != X2 && y != Y2) {
+		setBlackXY(x,y);
+		if (x != X2)
+			x += dx;
+		if (y != Y2)
+			y += dy;
+	}
+	setBlackXY(x,y);
 }
 void drawWhiteDiagonal(int X1, int Y1, int X2, int Y2, int _dx, int _dy)
 {
-    int dx = (X2 >= X1) ? _dx : -_dx;
-    int dy = (Y2 >= Y1) ? _dy : -_dy;
-    int x = X1;
-    int y = Y1;
-    while (x != X2 && y != Y2) {
-        setWhiteXY(x,y);
-        if (x != X2)
-            x += dx;
-        if (y != Y2)
-            y += dy;
-    }
-    setWhiteXY(x,y);
+	int dx = (X2 >= X1) ? _dx : -_dx;
+	int dy = (Y2 >= Y1) ? _dy : -_dy;
+	int x = X1;
+	int y = Y1;
+	while (x != X2 && y != Y2) {
+		setWhiteXY(x,y);
+		if (x != X2)
+			x += dx;
+		if (y != Y2)
+			y += dy;
+	}
+	setWhiteXY(x,y);
 }
 void setBlackXY(int x, int y)
 {
-    int loc = (x-1) + (400*(y-1));
-    int bit = loc%8;
-    int ptr = loc/8;
-    ptr += header;
-    uint8_t op = 0b10000000;
-    op = op >> bit;
-    img_buf[ptr] = img_buf[ptr] | op;
+	int loc = (x-1) + (400*(y-1));
+	int bit = loc%8;
+	int ptr = loc/8;
+	ptr += header;
+	uint8_t op = 0b10000000;
+	op = op >> bit;
+	img_buf[ptr] = img_buf[ptr] | op;
 }
 void setWhiteXY(int x, int y)
 {
-    int loc = (x-1) + (400*(y-1));
-    int bit = loc%8;
-    int ptr = loc/8;
-    ptr += header;
-    int op = 0b10000000;
-    op = op >> bit;
-    img_buf[ptr] = img_buf[ptr] & (~op);
+	int loc = (x-1) + (400*(y-1));
+	int bit = loc%8;
+	int ptr = loc/8;
+	ptr += header;
+	int op = 0b10000000;
+	op = op >> bit;
+	img_buf[ptr] = img_buf[ptr] & (~op);
 }
 int drawCharacter(int x, int y, int pt, char c)
 {
-    // pt = font thickness
-    // Print character C, at top left: x,y
-    int px = pt-1; // thickness
-    int l = 6*px; // length
-    int w = 12*px; // width
-    int dx, dy;
-    switch (c) {
-        case 'A':
-        case 'B':
-        case 'C':
-        case 'D':
-        case 'E':
-        case 'F':
-        case 'G':
-        case 'H':
-            drawRectangle(x,y,x+px,y+w);
-            drawRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case 'I':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
-            drawRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case 'J':
-        case 'K':
-            drawRectangle(x,y,x+px,y+w);
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<pt; t++) {
-                drawDiagonal(x,y+w/2+t,x+l,y+t,dx,dy);
-                drawDiagonal(x,y+w/2-t,x+l,y+w-t,dx,dy);
-            }
-            break;
-        case 'L':
-        case 'M':
-            drawRectangle(x,y,x+px,y+w);
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<px; t++) {
-                drawDiagonal(x+t,y,x+l/2+t,y+w/2,dx,dy);
-                drawDiagonal(x+l-t,y,x+l/2-t,y+w/2,dx,dy);
-                drawDiagonal(x,y+t,x+l/2,y+w/2+t,dx,dy);
-                drawDiagonal(x+l,y+t,x+l-l/2,y+w/2+t,dx,dy);
-            }
-            drawRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case 'N':
-        case 'O':
-        case 'P':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x,y,x+px,y+w);
-            drawRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawRectangle(x+l-px,y,x+l,y+w/2);
-            break;
-        case 'Q':
-        case 'R':
-        case 'S':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x,y,x+px,y+w/2);
-            drawRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawRectangle(x+l-px,y+w/2,x+l,y+w);
-            drawRectangle(x,y+w-px,x+l,y+w);
-            // makes it different from 5
-            drawRectangle(x+l-px,y,x+l,y+w/4);
-            drawRectangle(x,y+w-w/4,x+px,y+w);
-            break;
-        case 'T':
-        case 'U':
-        case 'V':
-        case 'W':
-        case 'X':
-        case 'Y':
-        case 'Z':
-        case '0':
-            dx = 1;
-            dy = 1;
-            // vert lines
-            drawRectangle(x,y,x+px,y+w);
-            drawRectangle(x+l-px,y,x+l,y+w);
-            // horiz lines
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x,y+w-px,x+l,y+w);
-            for (int t=0; t<pt; t++)
-                drawDiagonal(x+t,y+w,x+l,y,dx,dy);
-            break;
-        case '1':
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<pt; t++)
-                drawDiagonal(x,y+w/4-t,x+l/2,y,dx,dy);
-            drawRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
-            drawRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '2':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x,y+w-px,x+l,y+w);
-            drawRectangle(x+l-px,y,x+l,y+w/2);
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<pt; t++)
-                drawDiagonal(x,y+w-t,x+l,y+w/2,dx,dy);
-            break;
-        case '3':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x+l-px,y,x+l,y+w/2);
-            drawRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawRectangle(x+l-px,y+w/2,x+l,y+w);
-            drawRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '4':
-            drawRectangle(x,y,x+px,y+w/2);
-            drawRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case '5':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x,y,x+px,y+w/2);
-            drawRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawRectangle(x+l-px,y+w/2,x+l,y+w);
-            drawRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '6':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x,y,x+px,y+w);
-            drawRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawRectangle(x+l-px,y+w/2,x+l,y+w);
-            drawRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '7':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case '8':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x,y,x+px,y+w);
-            drawRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawRectangle(x+l-px,y,x+l,y+w);
-            drawRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '9':
-            drawRectangle(x,y,x+l,y+px);
-            drawRectangle(x,y,x+px,y+w/2);
-            drawRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case '/':
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<pt; t++)
-                drawDiagonal(x,y+w/2+t+2*px,x+l,y+t+2*px,dx,dy);
-            break;
-        case ':':
-            drawRectangle(x,y+w/4,x+px,y+w/4+px);
-            drawRectangle(x,y+w-w/4,x+px,y+w-w/4+px);
-            break;
-        default:
-            break;
-    }
-    return x+l;
+	// pt = font thickness
+	// Print character C, at top left: x,y
+	int px = pt-1; // thickness
+	int l = 6*px; // length
+	int w = 12*px; // width
+	int dx, dy;
+	switch (c) {
+	case 'A':
+	case 'B':
+	case 'C':
+	case 'D':
+	case 'E':
+	case 'F':
+	case 'G':
+	case 'H':
+		drawRectangle(x,y,x+px,y+w);
+		drawRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case 'I':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
+		drawRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case 'J':
+	case 'K':
+		drawRectangle(x,y,x+px,y+w);
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<pt; t++) {
+			drawDiagonal(x,y+w/2+t,x+l,y+t,dx,dy);
+			drawDiagonal(x,y+w/2-t,x+l,y+w-t,dx,dy);
+		}
+		break;
+	case 'L':
+	case 'M':
+		drawRectangle(x,y,x+px,y+w);
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<px; t++) {
+			drawDiagonal(x+t,y,x+l/2+t,y+w/2,dx,dy);
+			drawDiagonal(x+l-t,y,x+l/2-t,y+w/2,dx,dy);
+			drawDiagonal(x,y+t,x+l/2,y+w/2+t,dx,dy);
+			drawDiagonal(x+l,y+t,x+l-l/2,y+w/2+t,dx,dy);
+		}
+		drawRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case 'N':
+	case 'O':
+	case 'P':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x,y,x+px,y+w);
+		drawRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(x+l-px,y,x+l,y+w/2);
+		break;
+	case 'Q':
+	case 'R':
+	case 'S':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x,y,x+px,y+w/2);
+		drawRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(x+l-px,y+w/2,x+l,y+w);
+		drawRectangle(x,y+w-px,x+l,y+w);
+		// makes it different from 5
+		drawRectangle(x+l-px,y,x+l,y+w/4);
+		drawRectangle(x,y+w-w/4,x+px,y+w);
+		break;
+	case 'T':
+	case 'U':
+	case 'V':
+	case 'W':
+	case 'X':
+	case 'Y':
+	case 'Z':
+	case '0':
+		dx = 1;
+		dy = 1;
+		// vert lines
+		drawRectangle(x,y,x+px,y+w);
+		drawRectangle(x+l-px,y,x+l,y+w);
+		// horiz lines
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x,y+w-px,x+l,y+w);
+		for (int t=0; t<pt; t++)
+			drawDiagonal(x+t,y+w,x+l,y,dx,dy);
+		break;
+	case '1':
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<pt; t++)
+			drawDiagonal(x,y+w/4-t,x+l/2,y,dx,dy);
+		drawRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
+		drawRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '2':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x,y+w-px,x+l,y+w);
+		drawRectangle(x+l-px,y,x+l,y+w/2);
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<pt; t++)
+			drawDiagonal(x,y+w-t,x+l,y+w/2,dx,dy);
+		break;
+	case '3':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x+l-px,y,x+l,y+w/2);
+		drawRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(x+l-px,y+w/2,x+l,y+w);
+		drawRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '4':
+		drawRectangle(x,y,x+px,y+w/2);
+		drawRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case '5':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x,y,x+px,y+w/2);
+		drawRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(x+l-px,y+w/2,x+l,y+w);
+		drawRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '6':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x,y,x+px,y+w);
+		drawRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(x+l-px,y+w/2,x+l,y+w);
+		drawRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '7':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case '8':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x,y,x+px,y+w);
+		drawRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(x+l-px,y,x+l,y+w);
+		drawRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '9':
+		drawRectangle(x,y,x+l,y+px);
+		drawRectangle(x,y,x+px,y+w/2);
+		drawRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case '/':
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<pt; t++)
+			drawDiagonal(x,y+w/2+t+2*px,x+l,y+t+2*px,dx,dy);
+		break;
+	case ':':
+		drawRectangle(x,y+w/4,x+px,y+w/4+px);
+		drawRectangle(x,y+w-w/4,x+px,y+w-w/4+px);
+		break;
+	default:
+		break;
+	}
+	return x+l;
 }
 int drawWhiteCharacter(int x, int y, int pt, char c)
 {
-    // pt = font thickness
-    // Print character C, at top left: x,y
-    int px = pt-1; // thickness
-    int l = 6*px; // length
-    int w = 12*px; // width
-    int dx, dy;
-    switch (c) {
-        case 'A':
-        case 'B':
-        case 'C':
-        case 'D':
-        case 'E':
-        case 'F':
-        case 'G':
-        case 'H':
-            drawWhiteRectangle(x,y,x+px,y+w);
-            drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawWhiteRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case 'I':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
-            drawWhiteRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case 'J':
-        case 'K':
-            drawWhiteRectangle(x,y,x+px,y+w);
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<pt; t++) {
-                drawWhiteDiagonal(x,y+w/2+t,x+l,y+t,dx,dy);
-                drawWhiteDiagonal(x,y+w/2-t,x+l,y+w-t,dx,dy);
-            }
-            break;
-        case 'L':
-        case 'M':
-            drawWhiteRectangle(x,y,x+px,y+w);
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<px; t++) {
-                drawWhiteDiagonal(x+t,y,x+l/2+t,y+w/2,dx,dy);
-                drawWhiteDiagonal(x+l-t,y,x+l/2-t,y+w/2,dx,dy);
-                drawWhiteDiagonal(x,y+t,x+l/2,y+w/2+t,dx,dy);
-                drawWhiteDiagonal(x+l,y+t,x+l-l/2,y+w/2+t,dx,dy);
-            }
-            drawWhiteRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case 'N':
-        case 'O':
-        case 'P':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x,y,x+px,y+w);
-            drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawWhiteRectangle(x+l-px,y,x+l,y+w/2);
-            break;
-        case 'Q':
-        case 'R':
-        case 'S':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x,y,x+px,y+w/2);
-            drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
-            drawWhiteRectangle(x,y+w-px,x+l,y+w);
-            // makes it different from 5
-            drawWhiteRectangle(x+l-px,y,x+l,y+w/4);
-            drawWhiteRectangle(x,y+w-w/4,x+px,y+w);
-            break;
-        case 'T':
-        case 'U':
-        case 'V':
-        case 'W':
-        case 'X':
-        case 'Y':
-        case 'Z':
-        case '0':
-            dx = 1;
-            dy = 1;
-            // vert lines
-            drawWhiteRectangle(x,y,x+px,y+w);
-            drawWhiteRectangle(x+l-px,y,x+l,y+w);
-            // horiz lines
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x,y+w-px,x+l,y+w);
-            for (int t=0; t<pt; t++)
-                drawWhiteDiagonal(x+t,y+w,x+l,y,dx,dy);
-            break;
-        case '1':
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<pt; t++)
-                drawWhiteDiagonal(x,y+w/4-t,x+l/2,y,dx,dy);
-            drawWhiteRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
-            drawWhiteRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '2':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x,y+w-px,x+l,y+w);
-            drawWhiteRectangle(x+l-px,y,x+l,y+w/2);
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<pt; t++)
-                drawWhiteDiagonal(x,y+w-t,x+l,y+w/2,dx,dy);
-            break;
-        case '3':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x+l-px,y,x+l,y+w/2);
-            drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
-            drawWhiteRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '4':
-            drawWhiteRectangle(x,y,x+px,y+w/2);
-            drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawWhiteRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case '5':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x,y,x+px,y+w/2);
-            drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
-            drawWhiteRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '6':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x,y,x+px,y+w);
-            drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
-            drawWhiteRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '7':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case '8':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x,y,x+px,y+w);
-            drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawWhiteRectangle(x+l-px,y,x+l,y+w);
-            drawWhiteRectangle(x,y+w-px,x+l,y+w);
-            break;
-        case '9':
-            drawWhiteRectangle(x,y,x+l,y+px);
-            drawWhiteRectangle(x,y,x+px,y+w/2);
-            drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-            drawWhiteRectangle(x+l-px,y,x+l,y+w);
-            break;
-        case '/':
-            dx = 1;
-            dy = 1;
-            for (int t=0; t<pt; t++)
-                drawWhiteDiagonal(x,y+w/2+t+2*px,x+l,y+t+2*px,dx,dy);
-            break;
-        case ':':
-            drawWhiteRectangle(x,y+w/4,x+px,y+w/4+px);
-            drawWhiteRectangle(x,y+w-w/4,x+px,y+w-w/4+px);
-            break;
-        default:
-            break;
-    }
-    return x+l;
+	// pt = font thickness
+	// Print character C, at top left: x,y
+	int px = pt-1; // thickness
+	int l = 6*px; // length
+	int w = 12*px; // width
+	int dx, dy;
+	switch (c) {
+	case 'A':
+	case 'B':
+	case 'C':
+	case 'D':
+	case 'E':
+	case 'F':
+	case 'G':
+	case 'H':
+		drawWhiteRectangle(x,y,x+px,y+w);
+		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawWhiteRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case 'I':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
+		drawWhiteRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case 'J':
+	case 'K':
+		drawWhiteRectangle(x,y,x+px,y+w);
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<pt; t++) {
+			drawWhiteDiagonal(x,y+w/2+t,x+l,y+t,dx,dy);
+			drawWhiteDiagonal(x,y+w/2-t,x+l,y+w-t,dx,dy);
+		}
+		break;
+	case 'L':
+	case 'M':
+		drawWhiteRectangle(x,y,x+px,y+w);
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<px; t++) {
+			drawWhiteDiagonal(x+t,y,x+l/2+t,y+w/2,dx,dy);
+			drawWhiteDiagonal(x+l-t,y,x+l/2-t,y+w/2,dx,dy);
+			drawWhiteDiagonal(x,y+t,x+l/2,y+w/2+t,dx,dy);
+			drawWhiteDiagonal(x+l,y+t,x+l-l/2,y+w/2+t,dx,dy);
+		}
+		drawWhiteRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case 'N':
+	case 'O':
+	case 'P':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x,y,x+px,y+w);
+		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawWhiteRectangle(x+l-px,y,x+l,y+w/2);
+		break;
+	case 'Q':
+	case 'R':
+	case 'S':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x,y,x+px,y+w/2);
+		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
+		drawWhiteRectangle(x,y+w-px,x+l,y+w);
+		// makes it different from 5
+		drawWhiteRectangle(x+l-px,y,x+l,y+w/4);
+		drawWhiteRectangle(x,y+w-w/4,x+px,y+w);
+		break;
+	case 'T':
+	case 'U':
+	case 'V':
+	case 'W':
+	case 'X':
+	case 'Y':
+	case 'Z':
+	case '0':
+		dx = 1;
+		dy = 1;
+		// vert lines
+		drawWhiteRectangle(x,y,x+px,y+w);
+		drawWhiteRectangle(x+l-px,y,x+l,y+w);
+		// horiz lines
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x,y+w-px,x+l,y+w);
+		for (int t=0; t<pt; t++)
+			drawWhiteDiagonal(x+t,y+w,x+l,y,dx,dy);
+		break;
+	case '1':
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<pt; t++)
+			drawWhiteDiagonal(x,y+w/4-t,x+l/2,y,dx,dy);
+		drawWhiteRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
+		drawWhiteRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '2':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x,y+w-px,x+l,y+w);
+		drawWhiteRectangle(x+l-px,y,x+l,y+w/2);
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<pt; t++)
+			drawWhiteDiagonal(x,y+w-t,x+l,y+w/2,dx,dy);
+		break;
+	case '3':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x+l-px,y,x+l,y+w/2);
+		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
+		drawWhiteRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '4':
+		drawWhiteRectangle(x,y,x+px,y+w/2);
+		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawWhiteRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case '5':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x,y,x+px,y+w/2);
+		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
+		drawWhiteRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '6':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x,y,x+px,y+w);
+		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
+		drawWhiteRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '7':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case '8':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x,y,x+px,y+w);
+		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawWhiteRectangle(x+l-px,y,x+l,y+w);
+		drawWhiteRectangle(x,y+w-px,x+l,y+w);
+		break;
+	case '9':
+		drawWhiteRectangle(x,y,x+l,y+px);
+		drawWhiteRectangle(x,y,x+px,y+w/2);
+		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
+		drawWhiteRectangle(x+l-px,y,x+l,y+w);
+		break;
+	case '/':
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<pt; t++)
+			drawWhiteDiagonal(x,y+w/2+t+2*px,x+l,y+t+2*px,dx,dy);
+		break;
+	case ':':
+		drawWhiteRectangle(x,y+w/4,x+px,y+w/4+px);
+		drawWhiteRectangle(x,y+w-w/4,x+px,y+w-w/4+px);
+		break;
+	default:
+		break;
+	}
+	return x+l;
 }
 int drawString(int x, int y, int pt, int sp, char s[], int s_len)
 {
-    // sp = spacing
-    int st = x;
-    for (int i=0; i<s_len; i++) {
-        st = drawCharacter(st, y, pt, s[i]);
-        st += sp + 1;
-    }
-    return st;
+	// sp = spacing
+	int st = x;
+	for (int i=0; i<s_len; i++) {
+		st = drawCharacter(st, y, pt, s[i]);
+		st += sp + 1;
+	}
+	return st;
 }
 int drawWhiteString(int x, int y, int pt, int sp, char s[], int s_len)
 {
-    // sp = spacing
-    int st = x;
-    for (int i=0; i<s_len; i++) {
-        st = drawWhiteCharacter(st, y, pt, s[i]);
-        st += sp + 1;
-    }
-    return st;
+	// sp = spacing
+	int st = x;
+	for (int i=0; i<s_len; i++) {
+		st = drawWhiteCharacter(st, y, pt, s[i]);
+		st += sp + 1;
+	}
+	return st;
 }
 void uploadImageBuffer()
 {
-    int Le = 0;
-    resetDataPointer();
-    for (int i = 0; i*pkt_size < file_size; i++) {
-        do {
-            waitTCBusy();
-            // Send Image Data
-            HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-            // CMD
-            HAL_SPI_TransmitReceive(&hspi1, UploadImageData, rxData, 3, 1000);
-            // Image Data
-            HAL_SPI_TransmitReceive(&hspi1, &pkt_size, rxData, 1, 1000);
-            for (int j = 0; j < pkt_size; j++)
-            	HAL_SPI_TransmitReceive(&hspi1, &img_buf[i*pkt_size+j], rxData, 1, 1000);
-            HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-//            printf("\n\rSend Image Data (0x200100) Sent\n\r");
-        } while (readResponse(Le) == 1);
-    }
+	int Le = 0;
+	resetDataPointer();
+	for (int i = 0; i*pkt_size < file_size; i++) {
+		do {
+			waitTCBusy();
+			// Send Image Data
+			HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+			// CMD
+			HAL_SPI_TransmitReceive(&hspi1, UploadImageData, rxData, 3, 1000);
+			// Image Data
+			HAL_SPI_TransmitReceive(&hspi1, &pkt_size, rxData, 1, 1000);
+			for (int j = 0; j < pkt_size; j++)
+				HAL_SPI_TransmitReceive(&hspi1, &img_buf[i*pkt_size+j], rxData, 1, 1000);
+			HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
+			//            printf("\n\rSend Image Data (0x200100) Sent\n\r");
+		} while (readResponse(Le) == 1);
+	}
 }
 void resetDataPointer()
 {
-    int Le = 0;
-    waitTCBusy();
-    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-    HAL_SPI_TransmitReceive(&hspi1, ResetDataPointer, rxData, 3, 1000);
-    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-//    printf("\n\rReset Data Pointer (0x200D00) Sent\n\r");
-    readResponse(Le);
+	int Le = 0;
+	waitTCBusy();
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+	HAL_SPI_TransmitReceive(&hspi1, ResetDataPointer, rxData, 3, 1000);
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
+	//    printf("\n\rReset Data Pointer (0x200D00) Sent\n\r");
+	readResponse(Le);
 }
 void displayUpdate()
 {
-    int Le = 0;
-    waitTCBusy();
-    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-    HAL_SPI_TransmitReceive(&hspi1, DisplayUpdate, rxData, 3, 1000);
-    HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-//    printf("\n\rDisplay Update (0x240100) Sent\n\r");
-    readResponse(Le);
+	int Le = 0;
+	waitTCBusy();
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+	HAL_SPI_TransmitReceive(&hspi1, DisplayUpdate, rxData, 3, 1000);
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
+	//    printf("\n\rDisplay Update (0x240100) Sent\n\r");
+	readResponse(Le);
 }
 void testDraw(int i)
 {
-    int loc;
-    char c[10];
-    setAllWhite();
-    drawString(270, 10, 5, 10, itoa(i, c, 10), 4);
-    itoa(realspeed,c,10);
-    c[4] = 'K';
-    c[5] = 'M';
-    c[6] = '/';
-    c[7] = 'H';
-    drawString(100,100,5,10,c,10);
-    batteryImage(100, 200, 10, 97);
-    uploadImageBuffer();
-    displayUpdate();
+	int loc;
+	char c[10];
+	setAllWhite();
+	drawString(270, 10, 5, 10, itoa(i, c, 10), 4);
+	itoa(realspeed,c,10);
+	c[4] = 'K';
+	c[5] = 'M';
+	c[6] = '/';
+	c[7] = 'H';
+	drawString(100,100,5,10,c,10);
+	batteryImage(100, 200, 10, 97);
+	uploadImageBuffer();
+	displayUpdate();
 }
 void batteryImage(int x, int y, int pt, int percent){
 	drawRectangle(x, y, x+(10*pt), y+(5*pt));
-    drawRectangle(x+(10*pt), y+(5*pt/2)-pt, x+(pt)+(10*pt), y+(5*pt/2)+pt);
-    char c[10];
-    drawWhiteString(x+(pt), y-pt+(4*pt/2), 4, pt, itoa(percent, c, 10), 3);
+	drawRectangle(x+(10*pt), y+(5*pt/2)-pt, x+(pt)+(10*pt), y+(5*pt/2)+pt);
+	char c[10];
+	drawWhiteString(x+(pt), y-pt+(4*pt/2), 4, pt, itoa(percent, c, 10), 3);
 }
+
+
+void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* theHcan) {
+	printf("Message Transmitted and Acknowledged");
+	printf("\n\r");
+}
+
+void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
+	long int ID;
+	printf("Message Received and Acknowledged from ID ");
+	ID = theHcan->pRxMsg->ExtId;
+	if (ID == 0)
+		ID = theHcan->pRxMsg->StdId;
+	printf(itoa(ID,strConvert,10));
+	printf("\n\r");
+	if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
+		Error_Handler();
+	}
+}
+
+void __io_putchar(uint8_t ch) {
+	HAL_UART_Transmit(&huart2, &ch, 1, 1);
+}
+
+
+/*
+static void MX_CAN_Init(void)
+{
+	__HAL_RCC_CAN1_CLK_ENABLE();
+	hcan.Instance = CAN;
+	hcan.Init.Mode = CAN_MODE_NORMAL;
+	setCANbitRate(1000, 32, &hcan);
+	hcan.Init.TTCM = DISABLE;
+	hcan.Init.ABOM = DISABLE;
+	hcan.Init.AWUM = DISABLE;
+	hcan.Init.NART = DISABLE;
+	hcan.Init.RFLM = DISABLE;
+	hcan.Init.TXFP = DISABLE;
+	static CanTxMsgTypeDef TxMessage;
+	static CanRxMsgTypeDef RxMessage;
+	hcan.pTxMsg = &TxMessage;
+	hcan.pRxMsg = &RxMessage;
+	if (HAL_CAN_Init(&hcan) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	CAN_FilterConfTypeDef canFilterConfig;
+	canFilterConfig.FilterNumber = 0;
+	canFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	canFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	canFilterConfig.FilterIdHigh = 0x0000;
+	canFilterConfig.FilterIdLow = 0x0000;
+	canFilterConfig.FilterMaskIdHigh = 0x0000;
+	canFilterConfig.FilterMaskIdLow = 0x0000;
+	canFilterConfig.FilterFIFOAssignment = 0;
+	canFilterConfig.FilterActivation = ENABLE;
+	canFilterConfig.BankNumber = 14;
+	if(HAL_CAN_ConfigFilter(&hcan, &canFilterConfig) != HAL_OK) {
+		Error_Handler();
+	}
+	if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
+		Error_Handler();
+	}
+}
+ */
+
 /* USER CODE END 4 */
 
 /**
@@ -1071,10 +1083,12 @@ void batteryImage(int x, int y, int pt, int percent){
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler */
-  /* User can add his own implementation to report the HAL error return state */
-  while(1) 
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	printf("Error Handler");
+	printf("\n\r");
+	while(1)
+	{
+	}
   /* USER CODE END Error_Handler */ 
 }
 
@@ -1090,7 +1104,7 @@ void Error_Handler(void)
 void assert_failed(uint8_t* file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
+	/* User can add his own implementation to report the file name and line number,
     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 
