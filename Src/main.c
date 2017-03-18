@@ -754,6 +754,14 @@ void uploadImageBuffer()
 {
 	int Le = 0;
 	resetDataPointer();
+    img_buf[0] = 0x33;
+    img_buf[1] = 0x01;
+    img_buf[2] = 0x90;
+    img_buf[3] = 0x01;
+    img_buf[4] = 0x2C;
+    img_buf[5] = 0x01;
+    for (int i=6; i<16; i++)
+        img_buf[i] = 0x00;
 	for (int i = 0; i*pkt_size < file_size; i++) {
 		do {
 			waitTCBusy();
