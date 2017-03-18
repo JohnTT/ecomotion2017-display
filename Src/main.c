@@ -59,6 +59,11 @@ uint8_t GetSystemInfo[4] = {0x31, 0x01, 0x01, 0x00};
 uint8_t DisplayUpdate[3] = {0x24, 0x01, 0x00};
 uint8_t UploadImageData[3] = {0x20, 0x01, 0x00};
 uint8_t ResetDataPointer[3] = {0x20, 0x0D, 0x00};
+typedef enum dispColour_t {
+	DISP_BLACK,
+	DISP_WHITE,
+	DISP_INVERT
+} dispColour;
 int value = 0;
 int realspeed = 0; // Real Wheel speed
 int flag = 0;
@@ -82,17 +87,15 @@ void waitTCBusy();
 int readResponse(int Le);
 void readStrResponse();
 void clearImageBuffer();
-void drawRectangle();
 void setAllBlack();
 void setAllWhite();
-void setBlackXY(int x, int y);
-void setWhiteXY(int x, int y);
-void drawRectangle(int X1, int Y1, int X2, int Y2);
+void setXY(dispColour colour, int x, int y);
+void drawRectangle(dispColour colour, int X1, int Y1, int X2, int Y2);
 void clearRectangle(int X1, int Y1, int X2, int Y2);
-void drawDiagonal(int X1, int Y1, int X2, int Y2, int dx, int dy);
-int drawCharacter(int x, int y, int pt, char c);
-int drawString(int x, int y, int pt, int sp, char s[], int size);
-void batteryImage(int x, int y, int pt, int percent);
+void drawDiagonal(dispColour colour, int X1, int Y1, int X2, int Y2, int dx, int dy);
+int drawCharacter(dispColour colour, int x, int y, int pt, char c);
+int drawString(dispColour colour, int x, int y, int pt, int sp, char s[], int size);
+void batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent);
 void testDraw();
 void delay(int x);
 // Functions defined for the TCM 441-230
@@ -114,7 +117,7 @@ int main(void)
 {
 
 	/* USER CODE BEGIN 1 */
-	int counter = 1;
+	int counter = 0;
 	/* USER CODE END 1 */
 
 	/* MCU Configuration----------------------------------------------------------*/
@@ -148,7 +151,8 @@ int main(void)
 		printf("\n\r");
 		flag = 0;
 		testDraw(counter);
-		counter *= 2;
+		counter += 11;
+		counter %= 100;
 
 
 
@@ -319,7 +323,7 @@ static void MX_SPI1_Init(void)
 	hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
 	hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
 	hspi1.Init.NSS = SPI_NSS_SOFT;
-	hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+	hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
 	hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
 	hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -497,7 +501,7 @@ void waitTCBusy()
 	HAL_Delay(10);
 	rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
 	while (!rx) {
-		printf("\n\rTC Busy\n\r");
+		//printf("\n\rTC Busy\n\r");
 		rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
 		HAL_Delay(10);
 	}
@@ -510,14 +514,14 @@ int readResponse(int Le)
 	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
 	for (int i=0; i<Le+2; i++) {
 		HAL_SPI_TransmitReceive(&hspi1, &tx, &rx, 1, 1000);
-		printf(" **%x ", (uint8_t)rxData);
+		//printf(" **%x ", (uint8_t)rxData);
 		if (i == 0 && (uint8_t)rx != 0x90)
 			flag = 1;
 		if (i == 1 && (uint8_t)rx != 0x00)
 			flag = 1;
 	}
 	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-	printf("\n\rEnd of Response %d\n\r", flag);
+	//printf("\n\rEnd of Response %d\n\r", flag);
 	return flag;
 }
 void setAllBlack()
@@ -530,75 +534,49 @@ void setAllWhite()
 	for (int i=header; i<file_size; i++)
 		img_buf[i] = 0x00;
 }
-void drawRectangle(int X1, int Y1, int X2, int Y2)
+void drawRectangle(dispColour colour, int X1, int Y1, int X2, int Y2)
 {
 	for (int y=Y1; y<=Y2; y++)
 		for (int x=X1; x<=X2; x++)
-			setBlackXY(x,y);
-}
-void drawWhiteRectangle(int X1, int Y1, int X2, int Y2)
-{
-	for (int y=Y1; y<=Y2; y++)
-		for (int x=X1; x<=X2; x++)
-			setWhiteXY(x,y);
+			setXY(colour, x, y);
 }
 void clearRectangle(int X1, int Y1, int X2, int Y2)
 {
 	for (int y=Y1; y<=Y2; y++)
 		for (int x=X1; x<=X2; x++)
-			setWhiteXY(x,y);
+			setXY(DISP_WHITE, x,y);
 }
-void drawDiagonal(int X1, int Y1, int X2, int Y2, int _dx, int _dy)
+void drawDiagonal(dispColour colour, int X1, int Y1, int X2, int Y2, int _dx, int _dy)
 {
 	int dx = (X2 >= X1) ? _dx : -_dx;
 	int dy = (Y2 >= Y1) ? _dy : -_dy;
 	int x = X1;
 	int y = Y1;
 	while (x != X2 && y != Y2) {
-		setBlackXY(x,y);
+		setXY(colour, x,y);
 		if (x != X2)
 			x += dx;
 		if (y != Y2)
 			y += dy;
 	}
-	setBlackXY(x,y);
+	setXY(colour, x,y);
 }
-void drawWhiteDiagonal(int X1, int Y1, int X2, int Y2, int _dx, int _dy)
-{
-	int dx = (X2 >= X1) ? _dx : -_dx;
-	int dy = (Y2 >= Y1) ? _dy : -_dy;
-	int x = X1;
-	int y = Y1;
-	while (x != X2 && y != Y2) {
-		setWhiteXY(x,y);
-		if (x != X2)
-			x += dx;
-		if (y != Y2)
-			y += dy;
-	}
-	setWhiteXY(x,y);
-}
-void setBlackXY(int x, int y)
+void setXY(dispColour colour, int x, int y)
 {
 	int loc = (x-1) + (400*(y-1));
 	int bit = loc%8;
 	int ptr = loc/8;
 	ptr += header;
-	uint8_t op = 0b10000000;
-	op = op >> bit;
-	img_buf[ptr] = img_buf[ptr] | op;
+	uint8_t op = 0x80;
+	op >>= bit;
+	if (colour == DISP_BLACK)
+		img_buf[ptr] = img_buf[ptr] | op;
+	else if (colour == DISP_WHITE)
+		img_buf[ptr] = img_buf[ptr] & (~op);
+	else if (colour == DISP_INVERT)
+		img_buf[ptr] = img_buf[ptr] ^ op;
 }
-void setWhiteXY(int x, int y)
-{
-	int loc = (x-1) + (400*(y-1));
-	int bit = loc%8;
-	int ptr = loc/8;
-	ptr += header;
-	int op = 0b10000000;
-	op = op >> bit;
-	img_buf[ptr] = img_buf[ptr] & (~op);
-}
-int drawCharacter(int x, int y, int pt, char c)
+int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 {
 	// pt = font thickness
 	// Print character C, at top left: x,y
@@ -615,57 +593,57 @@ int drawCharacter(int x, int y, int pt, char c)
 	case 'F':
 	case 'G':
 	case 'H':
-		drawRectangle(x,y,x+px,y+w);
-		drawRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(x+l-px,y,x+l,y+w);
+		drawRectangle(colour, x,y,x+px,y+w);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		break;
 	case 'I':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
-		drawRectangle(x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
+		drawRectangle(colour, x,y+w-px,x+l,y+w);
 		break;
 	case 'J':
 	case 'K':
-		drawRectangle(x,y,x+px,y+w);
+		drawRectangle(colour, x,y,x+px,y+w);
 		dx = 1;
 		dy = 1;
 		for (int t=0; t<pt; t++) {
-			drawDiagonal(x,y+w/2+t,x+l,y+t,dx,dy);
-			drawDiagonal(x,y+w/2-t,x+l,y+w-t,dx,dy);
+			drawDiagonal(colour, x,y+w/2+t,x+l,y+t,dx,dy);
+			drawDiagonal(colour, x,y+w/2-t,x+l,y+w-t,dx,dy);
 		}
 		break;
 	case 'L':
 	case 'M':
-		drawRectangle(x,y,x+px,y+w);
+		drawRectangle(colour, x,y,x+px,y+w);
 		dx = 1;
 		dy = 1;
 		for (int t=0; t<px; t++) {
-			drawDiagonal(x+t,y,x+l/2+t,y+w/2,dx,dy);
-			drawDiagonal(x+l-t,y,x+l/2-t,y+w/2,dx,dy);
-			drawDiagonal(x,y+t,x+l/2,y+w/2+t,dx,dy);
-			drawDiagonal(x+l,y+t,x+l-l/2,y+w/2+t,dx,dy);
+			drawDiagonal(colour, x+t,y,x+l/2+t,y+w/2,dx,dy);
+			drawDiagonal(colour, x+l-t,y,x+l/2-t,y+w/2,dx,dy);
+			drawDiagonal(colour, x,y+t,x+l/2,y+w/2+t,dx,dy);
+			drawDiagonal(colour, x+l,y+t,x+l-l/2,y+w/2+t,dx,dy);
 		}
-		drawRectangle(x+l-px,y,x+l,y+w);
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		break;
 	case 'N':
 	case 'O':
 	case 'P':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x,y,x+px,y+w);
-		drawRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(x+l-px,y,x+l,y+w/2);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x,y,x+px,y+w);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+l-px,y,x+l,y+w/2);
 		break;
 	case 'Q':
 	case 'R':
 	case 'S':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x,y,x+px,y+w/2);
-		drawRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(x+l-px,y+w/2,x+l,y+w);
-		drawRectangle(x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x,y,x+px,y+w/2);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+l-px,y+w/2,x+l,y+w);
+		drawRectangle(colour, x,y+w-px,x+l,y+w);
 		// makes it different from 5
-		drawRectangle(x+l-px,y,x+l,y+w/4);
-		drawRectangle(x,y+w-w/4,x+px,y+w);
+		drawRectangle(colour, x+l-px,y,x+l,y+w/4);
+		drawRectangle(colour, x,y+w-w/4,x+px,y+w);
 		break;
 	case 'T':
 	case 'U':
@@ -678,272 +656,100 @@ int drawCharacter(int x, int y, int pt, char c)
 		dx = 1;
 		dy = 1;
 		// vert lines
-		drawRectangle(x,y,x+px,y+w);
-		drawRectangle(x+l-px,y,x+l,y+w);
+		drawRectangle(colour, x,y,x+px,y+w);
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		// horiz lines
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x,y+w-px,x+l,y+w);
 		for (int t=0; t<pt; t++)
-			drawDiagonal(x+t,y+w,x+l,y,dx,dy);
+			drawDiagonal(colour, x+t,y+w,x+l,y,dx,dy);
 		break;
 	case '1':
 		dx = 1;
 		dy = 1;
 		for (int t=0; t<pt; t++)
-			drawDiagonal(x,y+w/4-t,x+l/2,y,dx,dy);
-		drawRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
-		drawRectangle(x,y+w-px,x+l,y+w);
+			drawDiagonal(colour, x,y+w/4-t,x+l/2,y,dx,dy);
+		drawRectangle(colour, x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
+		drawRectangle(colour, x,y+w-px,x+l,y+w);
 		break;
 	case '2':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x,y+w-px,x+l,y+w);
-		drawRectangle(x+l-px,y,x+l,y+w/2);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x+l-px,y,x+l,y+w/2);
 		dx = 1;
 		dy = 1;
 		for (int t=0; t<pt; t++)
-			drawDiagonal(x,y+w-t,x+l,y+w/2,dx,dy);
+			drawDiagonal(colour, x,y+w-t,x+l,y+w/2,dx,dy);
 		break;
 	case '3':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x+l-px,y,x+l,y+w/2);
-		drawRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(x+l-px,y+w/2,x+l,y+w);
-		drawRectangle(x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x+l-px,y,x+l,y+w/2);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+l-px,y+w/2,x+l,y+w);
+		drawRectangle(colour, x,y+w-px,x+l,y+w);
 		break;
 	case '4':
-		drawRectangle(x,y,x+px,y+w/2);
-		drawRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(x+l-px,y,x+l,y+w);
+		drawRectangle(colour, x,y,x+px,y+w/2);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		break;
 	case '5':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x,y,x+px,y+w/2);
-		drawRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(x+l-px,y+w/2,x+l,y+w);
-		drawRectangle(x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x,y,x+px,y+w/2);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+l-px,y+w/2,x+l,y+w);
+		drawRectangle(colour, x,y+w-px,x+l,y+w);
 		break;
 	case '6':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x,y,x+px,y+w);
-		drawRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(x+l-px,y+w/2,x+l,y+w);
-		drawRectangle(x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x,y,x+px,y+w);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+l-px,y+w/2,x+l,y+w);
+		drawRectangle(colour, x,y+w-px,x+l,y+w);
 		break;
 	case '7':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x+l-px,y,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		break;
 	case '8':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x,y,x+px,y+w);
-		drawRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(x+l-px,y,x+l,y+w);
-		drawRectangle(x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x,y,x+px,y+w);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
+		drawRectangle(colour, x,y+w-px,x+l,y+w);
 		break;
 	case '9':
-		drawRectangle(x,y,x+l,y+px);
-		drawRectangle(x,y,x+px,y+w/2);
-		drawRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(x+l-px,y,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x,y,x+px,y+w/2);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		break;
 	case '/':
 		dx = 1;
 		dy = 1;
 		for (int t=0; t<pt; t++)
-			drawDiagonal(x,y+w/2+t+2*px,x+l,y+t+2*px,dx,dy);
+			drawDiagonal(colour, x,y+w/2+t+2*px,x+l,y+t+2*px,dx,dy);
 		break;
 	case ':':
-		drawRectangle(x,y+w/4,x+px,y+w/4+px);
-		drawRectangle(x,y+w-w/4,x+px,y+w-w/4+px);
+		drawRectangle(colour, x,y+w/4,x+px,y+w/4+px);
+		drawRectangle(colour, x,y+w-w/4,x+px,y+w-w/4+px);
 		break;
 	default:
 		break;
 	}
 	return x+l;
 }
-int drawWhiteCharacter(int x, int y, int pt, char c)
-{
-	// pt = font thickness
-	// Print character C, at top left: x,y
-	int px = pt-1; // thickness
-	int l = 6*px; // length
-	int w = 12*px; // width
-	int dx, dy;
-	switch (c) {
-	case 'A':
-	case 'B':
-	case 'C':
-	case 'D':
-	case 'E':
-	case 'F':
-	case 'G':
-	case 'H':
-		drawWhiteRectangle(x,y,x+px,y+w);
-		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawWhiteRectangle(x+l-px,y,x+l,y+w);
-		break;
-	case 'I':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
-		drawWhiteRectangle(x,y+w-px,x+l,y+w);
-		break;
-	case 'J':
-	case 'K':
-		drawWhiteRectangle(x,y,x+px,y+w);
-		dx = 1;
-		dy = 1;
-		for (int t=0; t<pt; t++) {
-			drawWhiteDiagonal(x,y+w/2+t,x+l,y+t,dx,dy);
-			drawWhiteDiagonal(x,y+w/2-t,x+l,y+w-t,dx,dy);
-		}
-		break;
-	case 'L':
-	case 'M':
-		drawWhiteRectangle(x,y,x+px,y+w);
-		dx = 1;
-		dy = 1;
-		for (int t=0; t<px; t++) {
-			drawWhiteDiagonal(x+t,y,x+l/2+t,y+w/2,dx,dy);
-			drawWhiteDiagonal(x+l-t,y,x+l/2-t,y+w/2,dx,dy);
-			drawWhiteDiagonal(x,y+t,x+l/2,y+w/2+t,dx,dy);
-			drawWhiteDiagonal(x+l,y+t,x+l-l/2,y+w/2+t,dx,dy);
-		}
-		drawWhiteRectangle(x+l-px,y,x+l,y+w);
-		break;
-	case 'N':
-	case 'O':
-	case 'P':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x,y,x+px,y+w);
-		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawWhiteRectangle(x+l-px,y,x+l,y+w/2);
-		break;
-	case 'Q':
-	case 'R':
-	case 'S':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x,y,x+px,y+w/2);
-		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
-		drawWhiteRectangle(x,y+w-px,x+l,y+w);
-		// makes it different from 5
-		drawWhiteRectangle(x+l-px,y,x+l,y+w/4);
-		drawWhiteRectangle(x,y+w-w/4,x+px,y+w);
-		break;
-	case 'T':
-	case 'U':
-	case 'V':
-	case 'W':
-	case 'X':
-	case 'Y':
-	case 'Z':
-	case '0':
-		dx = 1;
-		dy = 1;
-		// vert lines
-		drawWhiteRectangle(x,y,x+px,y+w);
-		drawWhiteRectangle(x+l-px,y,x+l,y+w);
-		// horiz lines
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x,y+w-px,x+l,y+w);
-		for (int t=0; t<pt; t++)
-			drawWhiteDiagonal(x+t,y+w,x+l,y,dx,dy);
-		break;
-	case '1':
-		dx = 1;
-		dy = 1;
-		for (int t=0; t<pt; t++)
-			drawWhiteDiagonal(x,y+w/4-t,x+l/2,y,dx,dy);
-		drawWhiteRectangle(x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
-		drawWhiteRectangle(x,y+w-px,x+l,y+w);
-		break;
-	case '2':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x,y+w-px,x+l,y+w);
-		drawWhiteRectangle(x+l-px,y,x+l,y+w/2);
-		dx = 1;
-		dy = 1;
-		for (int t=0; t<pt; t++)
-			drawWhiteDiagonal(x,y+w-t,x+l,y+w/2,dx,dy);
-		break;
-	case '3':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x+l-px,y,x+l,y+w/2);
-		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
-		drawWhiteRectangle(x,y+w-px,x+l,y+w);
-		break;
-	case '4':
-		drawWhiteRectangle(x,y,x+px,y+w/2);
-		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawWhiteRectangle(x+l-px,y,x+l,y+w);
-		break;
-	case '5':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x,y,x+px,y+w/2);
-		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
-		drawWhiteRectangle(x,y+w-px,x+l,y+w);
-		break;
-	case '6':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x,y,x+px,y+w);
-		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawWhiteRectangle(x+l-px,y+w/2,x+l,y+w);
-		drawWhiteRectangle(x,y+w-px,x+l,y+w);
-		break;
-	case '7':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x+l-px,y,x+l,y+w);
-		break;
-	case '8':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x,y,x+px,y+w);
-		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawWhiteRectangle(x+l-px,y,x+l,y+w);
-		drawWhiteRectangle(x,y+w-px,x+l,y+w);
-		break;
-	case '9':
-		drawWhiteRectangle(x,y,x+l,y+px);
-		drawWhiteRectangle(x,y,x+px,y+w/2);
-		drawWhiteRectangle(x,y+w/2,x+l,y+w/2+px);
-		drawWhiteRectangle(x+l-px,y,x+l,y+w);
-		break;
-	case '/':
-		dx = 1;
-		dy = 1;
-		for (int t=0; t<pt; t++)
-			drawWhiteDiagonal(x,y+w/2+t+2*px,x+l,y+t+2*px,dx,dy);
-		break;
-	case ':':
-		drawWhiteRectangle(x,y+w/4,x+px,y+w/4+px);
-		drawWhiteRectangle(x,y+w-w/4,x+px,y+w-w/4+px);
-		break;
-	default:
-		break;
-	}
-	return x+l;
-}
-int drawString(int x, int y, int pt, int sp, char s[], int s_len)
+int drawString(dispColour colour, int x, int y, int pt, int sp, char s[], int s_len)
 {
 	// sp = spacing
 	int st = x;
 	for (int i=0; i<s_len; i++) {
-		st = drawCharacter(st, y, pt, s[i]);
+		st = drawCharacter(colour, st, y, pt, s[i]);
 		st += sp + 1;
 	}
 	return st;
 }
-int drawWhiteString(int x, int y, int pt, int sp, char s[], int s_len)
-{
-	// sp = spacing
-	int st = x;
-	for (int i=0; i<s_len; i++) {
-		st = drawWhiteCharacter(st, y, pt, s[i]);
-		st += sp + 1;
-	}
-	return st;
-}
+
 void uploadImageBuffer()
 {
 	int Le = 0;
@@ -960,7 +766,7 @@ void uploadImageBuffer()
 			for (int j = 0; j < pkt_size; j++)
 				HAL_SPI_TransmitReceive(&hspi1, &img_buf[i*pkt_size+j], rxData, 1, 1000);
 			HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-			printf("\n\rSend Image Data (0x200100) Sent\n\r");
+			//printf("\n\rSend Image Data (0x200100) Sent\n\r");
 		} while (readResponse(Le) == 1);
 	}
 }
@@ -989,22 +795,39 @@ void testDraw(int i)
 	int loc;
 	char c[10];
 	setAllWhite();
-	drawString(270, 10, 5, 10, itoa(i, c, 10), 4);
+	drawString(DISP_BLACK, 270, 10, 5, 10, itoa(i, c, 10), 4);
 	itoa(realspeed,c,10);
 	c[4] = 'K';
 	c[5] = 'M';
 	c[6] = '/';
 	c[7] = 'H';
-	drawString(100,100,5,10,c,10);
-	batteryImage(100, 200, 10, 97);
+	drawString(DISP_BLACK, 100,100,5,10,c,10);
+	batteryImage(280, 240, 50, 4, 2, i);
 	uploadImageBuffer();
 	displayUpdate();
 }
-void batteryImage(int x, int y, int pt, int percent){
-	drawRectangle(x, y, x+(10*pt), y+(5*pt));
-	drawRectangle(x+(10*pt), y+(5*pt/2)-pt, x+(pt)+(10*pt), y+(5*pt/2)+pt);
+void batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent){
 	char c[10];
-	drawWhiteString(x+(pt), y-pt+(4*pt/2), 4, pt, itoa(percent, c, 10), 3);
+
+	int numDigs = 1;
+	if (percent >= 10) {
+		numDigs++;
+	}
+	if (percent >= 100) {
+		numDigs++;
+	}
+	int textLeft = size - (4 * fontSize * numDigs + fontSpacing * (numDigs - 1)) / 2;
+	int textTop = (size / 2) - (4 * fontSize);
+	float batDrawPercent = (((2*size)+(size/5)) * ((float)percent) / 100);
+	if (batDrawPercent > 2*size) {
+		drawRectangle(DISP_BLACK, x, y, x+(2*size), y+(size));
+		drawRectangle(DISP_BLACK, x+(2*size), y+(3*size/10), x+batDrawPercent, y+(7*size/10));
+	} else {
+		drawRectangle(DISP_BLACK, x, y, x+batDrawPercent, y+(size));
+	}
+
+
+	drawString(DISP_INVERT, x+textLeft, y+textTop, fontSize, fontSpacing, itoa(percent, c, 10), 3);
 }
 
 
