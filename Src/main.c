@@ -117,7 +117,7 @@ int main(void)
 {
 
 	/* USER CODE BEGIN 1 */
-	int counter = 0;
+	int counter = 89;
 	/* USER CODE END 1 */
 
 	/* MCU Configuration----------------------------------------------------------*/
@@ -151,8 +151,8 @@ int main(void)
 		printf("\n\r");
 		flag = 0;
 		testDraw(counter);
-		counter += 11;
-		counter %= 100;
+//		counter += 11;
+//		counter %= 100;
 
 
 
@@ -659,76 +659,74 @@ int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 		drawRectangle(colour, x,y,x+px,y+w);
 		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		// horiz lines
-		drawRectangle(colour, x,y,x+l,y+px);
-		drawRectangle(colour, x,y+w-px,x+l,y+w);
-		for (int t=0; t<pt; t++)
-			drawDiagonal(colour, x+t,y+w,x+l,y,dx,dy);
+		drawRectangle(colour, x+px+1,y,x+l-px-1,y+px);
+		drawRectangle(colour, x+px+1,y+w-px,x+l-px-1,y+w);
+//		for (int t=0; t<pt; t++)
+//			drawDiagonal(colour, x+t,y+w,x+l,y,dx,dy);
 		break;
 	case '1':
 		dx = 1;
 		dy = 1;
 		for (int t=0; t<pt; t++)
 			drawDiagonal(colour, x,y+w/4-t,x+l/2,y,dx,dy);
-		drawRectangle(colour, x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
-		drawRectangle(colour, x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w-px-1); //vert
+		drawRectangle(colour, x,y+w-px,x+l,y+w); //horz
 		break;
 	case '2':
-		drawRectangle(colour, x,y,x+l,y+px);
-		drawRectangle(colour, x,y+w-px,x+l,y+w);
-		drawRectangle(colour, x+l-px,y,x+l,y+w/2);
-		dx = 1;
-		dy = 1;
-		for (int t=0; t<pt; t++)
-			drawDiagonal(colour, x,y+w-t,x+l,y+w/2,dx,dy);
+		drawRectangle(colour, x,y,x+l,y+px); //horz 1
+		drawRectangle(colour, x,y+w/2-(px/2),x+l,y+w/2+(px/2)); //horz 2
+		drawRectangle(colour, x,y+w-px,x+l,y+w); //horz 3
+		drawRectangle(colour, x+l-px,y+px+1,x+l,y+w/2-(px/2)-1); //vert 1
+		drawRectangle(colour, x,y+w/2+(px/2)+1,x+px,y+w-px-1); //vert 2
 		break;
 	case '3':
-		drawRectangle(colour, x,y,x+l,y+px);
-		drawRectangle(colour, x+l-px,y,x+l,y+w/2);
-		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(colour, x+l-px,y+w/2,x+l,y+w);
-		drawRectangle(colour, x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px); //horz
+		drawRectangle(colour, x+l-px,y+px+1,x+l,y+w/2-(px/2)-1); //vert
+		drawRectangle(colour, x,y+w/2-(px/2),x+l,y+w/2+(px/2)); //horz
+		drawRectangle(colour, x+l-px,y+w/2+(px/2)+1,x+l,y+w-px-1); //vert
+		drawRectangle(colour, x,y+w-px,x+l,y+w); //horz
 		break;
 	case '4':
-		drawRectangle(colour, x,y,x+px,y+w/2);
-		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(colour, x+l-px,y,x+l,y+w);
+		drawRectangle(colour, x,y,x+px,y+w/2-(px/2)-1); //vert
+		drawRectangle(colour, x,y+w/2-(px/2),x+l-px-1,y+w/2+(px/2)); //horz
+		drawRectangle(colour, x+l-px,y,x+l,y+w); //vert
 		break;
 	case '5':
-		drawRectangle(colour, x,y,x+l,y+px);
-		drawRectangle(colour, x,y,x+px,y+w/2);
-		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(colour, x+l-px,y+w/2,x+l,y+w);
-		drawRectangle(colour, x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x,y,x+l,y+px); //horz
+		drawRectangle(colour, x,y+px+1,x+px,y+w/2+(px/2)); //vert
+		drawRectangle(colour, x+px+1,y+w/2-(px/2),x+l-px-1,y+w/2+(px/2)); //horz
+		drawRectangle(colour, x+l-px,y+w/2-(px/2),x+l,y+w-px-1); //vert
+		drawRectangle(colour, x,y+w-px,x+l,y+w); //horz
 		break;
 	case '6':
-		drawRectangle(colour, x,y,x+l,y+px);
-		drawRectangle(colour, x,y,x+px,y+w);
-		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(colour, x+l-px,y+w/2,x+l,y+w);
-		drawRectangle(colour, x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x+px+1,y,x+l,y+px); //horz
+		drawRectangle(colour, x,y,x+px,y+w); //vert big
+		drawRectangle(colour, x+px+1,y+w/2-(px/2),x+l-px-1,y+w/2+(px/2)); //horz
+		drawRectangle(colour, x+l-px,y+w/2-(px/2),x+l,y+w-px-1); //vert
+		drawRectangle(colour, x+px+1,y+w-px,x+l,y+w); //horz
 		break;
 	case '7':
-		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x,y,x+l-px-1,y+px);
 		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		break;
 	case '8':
-		drawRectangle(colour, x,y,x+l,y+px);
-		drawRectangle(colour, x,y,x+px,y+w);
-		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
-		drawRectangle(colour, x+l-px,y,x+l,y+w);
-		drawRectangle(colour, x,y+w-px,x+l,y+w);
+		drawRectangle(colour, x+px+1,y,x+l-px-1,y+px); //horz
+		drawRectangle(colour, x,y,x+px,y+w); //vert
+		drawRectangle(colour, x+px+1,y+w/2-(px/2),x+l-px-1,y+w/2+(px/2)); //horz
+		drawRectangle(colour, x+l-px,y,x+l,y+w); //vert
+		drawRectangle(colour, x+px+1,y+w-px,x+l-px-1,y+w); //horz
 		break;
 	case '9':
-		drawRectangle(colour, x,y,x+l,y+px);
-		drawRectangle(colour, x,y,x+px,y+w/2);
-		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		drawRectangle(colour, x+px+1,y,x+l-px-1,y+px); //horz
+		drawRectangle(colour, x,y,x+px,y+w/2-(px/2)-1); //vert
+		drawRectangle(colour, x,y+w/2-(px/2),x+l-px-1,y+w/2+(px/2));
 		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		break;
 	case '/':
 		dx = 1;
-		dy = 1;
+		dy = 2;
 		for (int t=0; t<pt; t++)
-			drawDiagonal(colour, x,y+w/2+t+2*px,x+l,y+t+2*px,dx,dy);
+			drawDiagonal(colour, x,y+w-pxx+t,x+l,y+t,dx,dy);
 		break;
 	case ':':
 		drawRectangle(colour, x,y+w/4,x+px,y+w/4+px);
@@ -827,11 +825,14 @@ void batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int per
 	int textLeft = size - (4 * fontSize * numDigs + fontSpacing * (numDigs - 1)) / 2;
 	int textTop = (size / 2) - (4 * fontSize);
 	float batDrawPercent = (((2*size)+(size/5)) * ((float)percent) / 100);
-	if (batDrawPercent > 2*size) {
-		drawRectangle(DISP_BLACK, x, y, x+(2*size), y+(size));
-		drawRectangle(DISP_BLACK, x+(2*size), y+(3*size/10), x+batDrawPercent, y+(7*size/10));
-	} else {
-		drawRectangle(DISP_BLACK, x, y, x+batDrawPercent, y+(size));
+	drawRectangle(DISP_BLACK, x-2, y-2, x+(2*size)+2, y+(size)+2);
+    drawRectangle(DISP_BLACK, x+(2*size)-2, y+(3*size/10)-2, x+(2*size)+(size/5)+2, y+(7*size/10)+2);
+	if (batDrawPercent < 2*size) {
+		drawRectangle(DISP_WHITE, x+batDrawPercent, y, x+(2*size), y+(size));
+		drawRectangle(DISP_WHITE, x+(2*size), y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
+	} else if (batDrawPercent > 99,5);
+	else {
+		drawRectangle(DISP_WHITE, x+batDrawPercent, y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
 	}
 
 
