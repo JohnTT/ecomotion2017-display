@@ -5113,7 +5113,7 @@ LOAD /Applications/Ac6/SystemWorkbench.app/Contents/Eclipse/plugins/fr.ac6.mcu.e
                 0x0000000000000890       0x22 /Applications/Ac6/SystemWorkbench.app/Contents/Eclipse/plugins/fr.ac6.mcu.externaltools.arm-none.macos64_1.13.1.201703061524/tools/compiler/bin/../lib/gcc/arm-none-eabi/5.4.1/armv7e-m/fpu/crtn.o
 OUTPUT(stm32cubemx_f303re.elf elf32-littlearm)
 
-.debug_info     0x0000000000000000     0xdab9
+.debug_info     0x0000000000000000     0xdb62
  .debug_info    0x0000000000000000      0x721 Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.o
  .debug_info    0x0000000000000721      0xb0e Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_can.o
  .debug_info    0x000000000000122f      0xe99 Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.o
@@ -5122,14 +5122,14 @@ OUTPUT(stm32cubemx_f303re.elf elf32-littlearm)
  .debug_info    0x0000000000003b43      0x70f Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_rcc_ex.o
  .debug_info    0x0000000000004252     0x1e8f Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_spi.o
  .debug_info    0x00000000000060e1     0x188d Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_uart.o
- .debug_info    0x000000000000796e     0x35c9 Src/main.o
- .debug_info    0x000000000000af37     0x18bb Src/stm32f3xx_hal_msp.o
- .debug_info    0x000000000000c7f2      0x62c Src/stm32f3xx_it.o
- .debug_info    0x000000000000ce1e      0x806 Src/syscalls.o
- .debug_info    0x000000000000d624      0x404 Src/system_stm32f3xx.o
- .debug_info    0x000000000000da28       0x91 startup/startup_stm32f303xe.o
+ .debug_info    0x000000000000796e     0x3672 Src/main.o
+ .debug_info    0x000000000000afe0     0x18bb Src/stm32f3xx_hal_msp.o
+ .debug_info    0x000000000000c89b      0x62c Src/stm32f3xx_it.o
+ .debug_info    0x000000000000cec7      0x806 Src/syscalls.o
+ .debug_info    0x000000000000d6cd      0x404 Src/system_stm32f3xx.o
+ .debug_info    0x000000000000dad1       0x91 startup/startup_stm32f303xe.o
 
-.debug_abbrev   0x0000000000000000     0x1f04
+.debug_abbrev   0x0000000000000000     0x1f2f
  .debug_abbrev  0x0000000000000000      0x1d3 Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.o
  .debug_abbrev  0x00000000000001d3      0x28f Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_can.o
  .debug_abbrev  0x0000000000000462      0x316 Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.o
@@ -5138,12 +5138,12 @@ OUTPUT(stm32cubemx_f303re.elf elf32-littlearm)
  .debug_abbrev  0x0000000000000c10      0x261 Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_rcc_ex.o
  .debug_abbrev  0x0000000000000e71      0x318 Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_spi.o
  .debug_abbrev  0x0000000000001189      0x2f8 Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_uart.o
- .debug_abbrev  0x0000000000001481      0x418 Src/main.o
- .debug_abbrev  0x0000000000001899      0x1fe Src/stm32f3xx_hal_msp.o
- .debug_abbrev  0x0000000000001a97      0x189 Src/stm32f3xx_it.o
- .debug_abbrev  0x0000000000001c20      0x1ce Src/syscalls.o
- .debug_abbrev  0x0000000000001dee      0x104 Src/system_stm32f3xx.o
- .debug_abbrev  0x0000000000001ef2       0x12 startup/startup_stm32f303xe.o
+ .debug_abbrev  0x0000000000001481      0x443 Src/main.o
+ .debug_abbrev  0x00000000000018c4      0x1fe Src/stm32f3xx_hal_msp.o
+ .debug_abbrev  0x0000000000001ac2      0x189 Src/stm32f3xx_it.o
+ .debug_abbrev  0x0000000000001c4b      0x1ce Src/syscalls.o
+ .debug_abbrev  0x0000000000001e19      0x104 Src/system_stm32f3xx.o
+ .debug_abbrev  0x0000000000001f1d       0x12 startup/startup_stm32f303xe.o
 
 .debug_loc      0x0000000000000000     0x678a
  .debug_loc     0x0000000000000000       0x4b Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.o
