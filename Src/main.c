@@ -65,6 +65,26 @@ int value = 0;
 int realspeed = 0; // Real Wheel speed
 int flag = 0;
 char strConvert[100];
+
+//New DMA variables
+int doReDraw;
+int isDMAFinished;
+int pkt_section;
+int loop_section;
+int copy_img_buf[15016];
+int MAX_SECTION = 63; //something is off here, Indexing errors??
+int hasDisplayed = 0;
+int hasResetDataPointer = 0;
+uint8_t rxResponse[2];
+uint8_t txResponse[2] = {0x00, 0x00};
+static int RESET_DATA_POINTER = 0;
+static int UPLOAD_IMAGE_DATA = 1;
+static int DATA_SIZE = 2;
+static int SEND_PACKET = 3;
+static int SAVE_RESPONSE = 4;
+static int READ_RESPONSE = 5;
+static int DISPLAY_IMAGE = 6;
+//End of New DMA variables
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,6 +111,14 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 	int counter = 89;
+    img_buf[0] = 0x33;
+    img_buf[1] = 0x01;
+    img_buf[2] = 0x90;
+    img_buf[3] = 0x01;
+    img_buf[4] = 0x2C;
+    img_buf[5] = 0x01;
+    for (int i=6; i<16; i++)
+        img_buf[i] = 0x00;
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -124,13 +152,16 @@ int main(void)
 		printf("\n\r");
 		flag = 0;
 		testDraw(counter);
+		if (isDMAFinished == 1 && !waitDMA_TCBusy())
+			dmaImageBufferSection();
 //		counter += 11;
 //		counter %= 100;
 //      must find a way to make waitTCBusy without polling, somehow read a GPIO port with interrupts
 //      check the waitTCBusy in the interrupt callback, if it's ready, send the next package of data
 //      using some function 'partitioning' if not, continue back to communicating to the LCD display
 //      and try again in a bit.
-
+//      Need to add a timer with interrupt call checks
+//
 
 		HAL_Delay(1000);
 	}
@@ -486,35 +517,6 @@ char *itoa (int value, char *result, int base)
 	}
 	return result;
 }
-void waitTCBusy()
-{
-	uint8_t rx;
-	HAL_Delay(10);
-	rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
-	while (!rx) {
-		//printf("\n\rTC Busy\n\r");
-		rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
-		HAL_Delay(10);
-	}
-}
-int readResponse(int Le)
-{
-	int flag = 0;
-	int rx;
-	waitTCBusy();
-	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-	for (int i=0; i<Le+2; i++) {
-		HAL_SPI_TransmitReceive_DMA(&hspi1, &tx, &rx, 1);
-		//printf(" **%x ", (uint8_t)rxData);
-		if (i == 0 && (uint8_t)rx != 0x90)
-			flag = 1;
-		if (i == 1 && (uint8_t)rx != 0x00)
-			flag = 1;
-	}
-	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-	//printf("\n\rEnd of Response %d\n\r", flag);
-	return flag;
-}
 void setAllBlack()
 {
 	for (int i=header; i<file_size; i++)
@@ -739,42 +741,63 @@ int drawString(dispColour colour, int x, int y, int pt, int sp, char s[], int s_
 	return st;
 }
 
+//Functions related to uploading and checking the E-paper display using polling mode
+int readResponse(int Le)
+{
+	int flag = 0;
+	int rx;
+	waitTCBusy();
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+	for (int i=0; i<Le+2; i++) {
+		HAL_SPI_TransmitReceive(&hspi1, &tx, &rx, 1, 1000);
+		//printf(" **%x ", (uint8_t)rxData);
+		if (i == 0 && (uint8_t)rx != 0x90)
+			flag = 1;
+		if (i == 1 && (uint8_t)rx != 0x00)
+			flag = 1;
+	}
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
+	//printf("\n\rEnd of Response %d\n\r", flag);
+	return flag;
+}
 void uploadImageBuffer()
 {
 	int Le = 0;
 	resetDataPointer();
-    img_buf[0] = 0x33;
-    img_buf[1] = 0x01;
-    img_buf[2] = 0x90;
-    img_buf[3] = 0x01;
-    img_buf[4] = 0x2C;
-    img_buf[5] = 0x01;
-    for (int i=6; i<16; i++)
-        img_buf[i] = 0x00;
 	for (int i = 0; i*pkt_size < file_size; i++) {
 		do {
 			waitTCBusy();
 			// Send Image Data
 			HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
 			// CMD
-			HAL_SPI_TransmitReceive_DMA(&hspi1, UploadImageData, rxData, 3);
+			HAL_SPI_TransmitReceive(&hspi1, UploadImageData, rxData, 3, 1000);
 			// Image Data
-			HAL_SPI_TransmitReceive_DMA(&hspi1, &pkt_size, rxData, 1);
+			HAL_SPI_TransmitReceive(&hspi1, &pkt_size, rxData, 1, 1000);
 			for (int j = 0; j < pkt_size; j++)
-				HAL_SPI_TransmitReceive_DMA(&hspi1, &img_buf[i*pkt_size+j], rxData, 1);
+				HAL_SPI_TransmitReceive(&hspi1, &img_buf[i*pkt_size+j], rxData, 1, 1000);
 			//HAL_SPI_TransmitReceive_DMA(&hspi1, &img_buf[i*pkt_size], rxData, 241);
 			HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
 			//printf("\n\rSend Image Data (0x200100) Sent\n\r");
 		} while (readResponse(Le) == 1);
 	}
 }
-
+void waitTCBusy()
+{
+	uint8_t rx;
+	HAL_Delay(10);
+	rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
+	while (!rx) {
+		//printf("\n\rTC Busy\n\r");
+		rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
+		HAL_Delay(10);
+	}
+}
 void resetDataPointer()
 {
 	int Le = 0;
 	waitTCBusy();
 	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-	HAL_SPI_TransmitReceive_DMA(&hspi1, ResetDataPointer, rxData, 3);
+	HAL_SPI_TransmitReceive(&hspi1, ResetDataPointer, rxData, 3, 1000);
 	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
 	printf("\n\rReset Data Pointer (0x200D00) Sent\n\r");
 	readResponse(Le);
@@ -784,11 +807,87 @@ void displayUpdate()
 	int Le = 0;
 	waitTCBusy();
 	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-	HAL_SPI_TransmitReceive_DMA(&hspi1, DisplayUpdate, rxData, 3);
+	HAL_SPI_TransmitReceive(&hspi1, DisplayUpdate, rxData, 3, 1000);
 	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
 	printf("\n\rDisplay Update (0x240100) Sent\n\r");
 	readResponse(Le);
 }
+//End of polling SPI functions
+
+//Functions related to uploading and checking the E-paper display using DMA-Interrupt mode
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi){
+	printf("SPI has successfully sent and received");
+	isDMAFinished = 1; //dma is done
+}
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
+	printf("SPI has successfully sent");
+    //tell everyone else that DMA is finished and doing nothing
+    isDMAFinished = 1;
+}
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi){
+	printf("SPI has encountered an error");
+}
+void dmaImageBufferSection(){
+	isDMAFinished = 0;
+	if (loop_section == RESET_DATA_POINTER){
+		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+		HAL_SPI_Transmit_DMA(&hspi1, ResetDataPointer, 3); //reset the data pointer
+		loop_section = 4; //read the response
+    }
+	else if (loop_section == UPLOAD_IMAGE_DATA){
+		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+	    HAL_SPI_Transmit_DMA(&hspi1, UploadImageData, 3); //tell the display we are about to upload
+	    pkt_section = 0; //getting ready to send data packet
+	    loop_section++;
+	}
+	else if (loop_section == DATA_SIZE){
+	    HAL_SPI_Transmit_DMA(&hspi1, &pkt_size, 1); //say how large the coming packet is
+	    loop_section++;
+	}
+	else if (loop_section == SEND_PACKET){
+		HAL_SPI_Transmit_DMA(&hspi1, img_buf[pkt_section*pkt_size], pkt_size); //send the packet
+		pkt_section++;
+		if (pkt_section == MAX_SECTION) //if done, go to the next section
+			loop_section++;
+	}
+	else if (loop_section == SAVE_RESPONSE){
+		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET); //is this necessary?
+		HAL_SPI_TransmitReceive_DMA(&hspi1, &tx, &rxResponse, 2); //check the response
+		loop_section++;
+	}
+	else if(loop_section == READ_RESPONSE){
+		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
+		if (hasDisplayed == 1){
+			loop_section = 0; //restart everything
+			hasDisplayed = 0; //until next display
+		}
+		else if (hasResetDataPointer == 1){
+			loop_section = 1; //continue with package sending
+		    hasResetDataPointer = 0; //until next data pointer reset
+		}
+		else if (readDMAResponse() == 0)
+			loop_section = 1; //do the loop again
+		else
+			loop_section++;
+		isDMAFinished = 1; //since the DMA didn't do anything
+	}
+	else if(loop_section == DISPLAY_IMAGE){
+		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+		HAL_SPI_Transmit_DMA(&hspi1, DisplayUpdate, 3); //display the new image
+		hasDisplayed = 1; //we displayed
+        loop_section = 4; //check the response
+	}
+}
+uint8_t waitDMA_TCBusy(){
+	return HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
+}
+int readDMAResponse()
+{
+	return (rxResponse == 0x9000);
+}
+//End of DMA SPI functions
+
 void testDraw(int i)
 {
 	int loc;
@@ -846,13 +945,8 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
 	if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
 		Error_Handler();
 	}
-}
-void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi){
-	printf("SPI has successfully sent and received");
-    //start next 241 bytes
-}
-void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi){
-	printf("SPI has encountered an error");
+	doReDraw = 1;
+	//Additional information gathering and modification here
 }
 void __io_putchar(uint8_t ch) {
 	HAL_UART_Transmit(&huart2, &ch, 1, 1);
