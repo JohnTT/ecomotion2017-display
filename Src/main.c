@@ -726,7 +726,7 @@ int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 		dx = 1;
 		dy = 2;
 		for (int t=0; t<pt; t++)
-			drawDiagonal(colour, x,y+w-pxx+t,x+l,y+t,dx,dy);
+			drawDiagonal(colour, x,y+w-px+t,x+l,y+t,dx,dy);
 		break;
 	case ':':
 		drawRectangle(colour, x,y+w/4,x+px,y+w/4+px);
