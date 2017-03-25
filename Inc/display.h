@@ -56,6 +56,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi);
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi);
 void dmaImageBufferSection();
-int waitDMA_TCBusy();
+uint8_t checkDMA_TCBusy();
 int readDMAResponse();
+void updateBufferDMA();
 #endif /* DISPLAY_H_ */

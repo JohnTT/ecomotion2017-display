@@ -63,14 +63,14 @@ int flag = 0;
 char strConvert[100];
 int batteryLife;
 //New DMA variables
-int doReDraw;
-int isDMAFinished;
+int doReDraw = 1;
+int isDMAFinished = 1;
 int pkt_section;
 DMA_sections loop_section;
 //int copy_img_buf[15016];
 int MAX_SECTION = 63; //something is off here, Indexing errors??
 int hasDisplayed = 0;
-int hasResetDataPointer = 0;
+int hasResetDataPointer;
 int sentAllData = 0;
 uint8_t rxResponse[2];
 uint8_t txResponse[2] = {0x00, 0x00};
@@ -106,6 +106,7 @@ int main(void)
 	img_buf[5] = 0x01;
 	for (int i=6; i<16; i++)
 		img_buf[i] = 0x00;
+	hasResetDataPointer = 0;
 	/* USER CODE END 1 */
 
 	/* MCU Configuration----------------------------------------------------------*/
@@ -131,15 +132,16 @@ int main(void)
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
+	flag = 0;
+	updateBufferDMA();
 	while (1)
 	{
 		/* USER CODE END WHILE */
-
 		/* USER CODE BEGIN 3 */
 
-		printf("Test");
+		printf("Test!!!");
 		printf("\n\r");
-		flag = 0;
+		//flag = 0;
 		//testDraw(counter);
 		//		counter += 11;
 		//		counter %= 100;
@@ -150,7 +152,7 @@ int main(void)
 		//      Need to add a timer with interrupt call checks
 		//
 
-		HAL_Delay(1000);
+		//HAL_Delay(10);
 	}
 	/* USER CODE END 3 */
 
@@ -335,7 +337,7 @@ static void MX_TIM1_Init(void)
 	htim1.Instance = TIM1;
 	htim1.Init.Prescaler = 6400;
 	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim1.Init.Period = 10000;
+	htim1.Init.Period = 10;
 	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim1.Init.RepetitionCounter = 0;
 	htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -674,8 +676,7 @@ int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 	case '1':
 		dx = 1;
 		dy = 1;
-		for (int t=0; t<pt; t++)
-			drawDiagonal(colour, x,y+w/4-t,x+l/2,y,dx,dy);
+		drawRectangle(colour, x,y,x+(l/2)-(px)+1,y+px); //vert
 		drawRectangle(colour, x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w-px-1); //vert
 		drawRectangle(colour, x,y+w-px,x+l,y+w); //horz
 		break;
@@ -828,11 +829,11 @@ void displayUpdate()
 //End of polling SPI functions
 //Functions related to uploading and checking the E-paper display using DMA-Interrupt mode
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi){
-	printf("SPI has successfully sent and received");
+	//printf("SPI has successfully sent and received");
 	isDMAFinished = 1; //dma is done
 }
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
-	printf("SPI has successfully sent");
+	//printf("SPI has successfully sent");
 	//tell everyone else that DMA is finished and doing nothing
 	isDMAFinished = 1;
 	if (sentAllData == 1){
@@ -844,8 +845,13 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi){
 	printf("SPI has encountered an error");
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){//for counter update event (wrap back to 0)
-	if (isDMAFinished && !checkDMA_TCBusy())
+	//printf("Timer Update");
+	//printf("\n\r");
+	if (isDMAFinished && checkDMA_TCBusy()){
 		dmaImageBufferSection();
+		//printf("Here?");
+		//printf("\n\r");
+	}
 }
 void resetDataPointerDMA(){
 	HAL_SPI_Transmit_DMA(&hspi1, ResetDataPointer, 3); //reset the data pointer
@@ -876,8 +882,19 @@ void readResponseDMA(){
 		loop_section = UPLOAD_IMAGE_DATA; //continue with package sending
 		hasResetDataPointer = 0; //until next data pointer reset
 	}
-	else if (*rxResponse != 0x9000)
+	else if ((rxResponse[0] != 0x90) && (rxResponse[1] != 0x00)) {
+		printf("Errors, data send problems\n\r");
 		loop_section = UPLOAD_IMAGE_DATA; //do the loop again
+		rxResponse[0] = 0xFF;
+		rxResponse[1] = 0xFF;
+	}
+	else if (pkt_section < MAX_SECTION){
+		//printf("We good, data sent correctly\n\r");
+//		printf(itoa(pkt_section, strConvert, 10));
+//		printf("\n\r");
+		pkt_section++;
+		loop_section = UPLOAD_IMAGE_DATA; //do the loop again
+	}
 	else
 		loop_section = DISPLAY_IMAGE;
 	isDMAFinished = 1; //since the DMA didn't do anything
@@ -886,6 +903,7 @@ void displayImageDMA(){
 	HAL_SPI_Transmit_DMA(&hspi1, DisplayUpdate, 3); //display the new image
 }
 void updateBufferDMA(){
+	printf("Now updating the buffer with DMA\n\r");
 	char c[10];
 	setAllWhite();
 	drawString(DISP_BLACK, 270, 10, 5, 10, itoa(batteryLife, c, 10), 4);
@@ -900,30 +918,36 @@ void updateBufferDMA(){
 	batteryLife = batteryLife % 100;
 }
 void dmaImageBufferSection(){
+//	printf("in buffer section");
+//	printf("\n\r");
 	isDMAFinished = 0;
 	switch (loop_section){
 	case RESET_DATA_POINTER:
 		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-		resetDataPointer();
+		printf("in reset data pointer");
+		printf("\n\r");
+		resetDataPointerDMA();
+		hasResetDataPointer = 1;
+		pkt_section = 0; //getting ready to send data packet
 		loop_section = GET_RESPONSE; //read the response
+		printf("out of reset data pointer");
+		printf("\n\r");
 		break;
 	case UPLOAD_IMAGE_DATA:
+		//printf("Upload image\n\r");
 		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
 		uploadImageDataDMA();
-		pkt_section = 0; //getting ready to send data packet
 		loop_section = DATA_SIZE;
 		break;
 	case DATA_SIZE:
+		//printf("now sending all data\n\r");
 		findDataSizeDMA();
 		loop_section = SEND_PACKET;
 		break;
 	case SEND_PACKET:
 		sendPacketDMA();
-		pkt_section++;
-		if (pkt_section == MAX_SECTION){ //if done, go to the next section
-			loop_section = GET_RESPONSE;
-			sentAllData = 1; //for proper wait tc busy
-		}
+		loop_section = GET_RESPONSE;
+		sentAllData = 1; //for proper wait tc busy
 		break;
 	case GET_RESPONSE:
 		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
@@ -935,21 +959,26 @@ void dmaImageBufferSection(){
 		readResponseDMA();
 		break;
 	case DISPLAY_IMAGE:
+		printf("Display update");
+		printf("\n\r");
 		HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
 		displayImageDMA();
 		hasDisplayed = 1; //we displayed
 		loop_section = GET_RESPONSE; //check the response
 		break;
 	case UPDATE_BUFFER:
+		printf("Now updating the buffer\n\r");
 		updateBufferDMA();
 		isDMAFinished = 1; //since the DMA didn't do anything
-		doReDraw = 0; //we updated the buffer
+		//doReDraw = 0; //we updated the buffer
 		loop_section = RESET_DATA_POINTER;
 		break;
 	}
+//	printf("out buffer section");
+//	printf("\n\r");
 }
-int checkDMA_TCBusy(){
-	return HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
+uint8_t checkDMA_TCBusy(){
+	return (uint8_t)HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
 }
 //End of DMA SPI functions
 void testDraw(int i)
@@ -957,7 +986,7 @@ void testDraw(int i)
 	//int loc;
 	char c[10];
 	setAllWhite();
-	drawStaring(DISP_BLACK, 270, 10, 5, 10, itoa(i, c, 10), 4);
+	drawString(DISP_BLACK, 270, 10, 5, 10, itoa(i, c, 10), 4);
 	itoa(realspeed,c,10);
 	c[4] = 'K';
 	c[5] = 'M';
