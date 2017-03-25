@@ -31,6 +31,8 @@ Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc_ex.o: \
  /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_pwr_ex.h \
  /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi.h \
  /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi_ex.h \
+ /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim.h \
+ /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h \
  /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h \
  /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h
 
@@ -95,6 +97,10 @@ Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc_ex.o: \
 /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi.h:
 
 /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi_ex.h:
+
+/Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim.h:
+
+/Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h:
 
 /Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h:
 

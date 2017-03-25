@@ -13,7 +13,16 @@ typedef enum dispColour_t {
 	DISP_WHITE,
 	DISP_INVERT
 } dispColour;
-
+typedef enum DMA_sections_t {
+	RESET_DATA_POINTER,
+	UPLOAD_IMAGE_DATA,
+	DATA_SIZE,
+	SEND_PACKET,
+	GET_RESPONSE,
+	READ_RESPONSE,
+	DISPLAY_IMAGE,
+	UPDATE_BUFFER
+} DMA_sections;
 static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleTypeDef* theHcan);
 void init();
 void waitTCBusy();
@@ -31,7 +40,8 @@ int drawString(dispColour colour, int x, int y, int pt, int sp, char s[], int si
 void batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent);
 void testDraw();
 void delay(int x);
-// Functions defined for the TCM 441-230
+
+// Functions defined for the TCM 441-230 using Polling
 void uploadImageBuffer();
 void resetDataPointer();
 void displayUpdate();
@@ -41,4 +51,11 @@ void getSystemInfo();
 void getSystemVersionCode();
 void readSensorData();
 
+//Functions defined for the TCM 441-230 using DMA
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi);
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi);
+void dmaImageBufferSection();
+int waitDMA_TCBusy();
+int readDMAResponse();
 #endif /* DISPLAY_H_ */
