@@ -489,11 +489,6 @@ static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleType
 		break;
 	}
 }
-void delay(int x)
-{
-	int m;
-	for (m = 0; m < x*10000; m++);
-}
 int numPlaces (int n)
 {
 	if (n < 10) return 1;
@@ -750,83 +745,14 @@ int drawString(dispColour colour, int x, int y, int pt, int sp, char s[], int s_
 	// sp = spacing
 	int st = x;
 	for (int i=0; i<s_len; i++) {
+		if (s[i] == '\0')
+			break;
 		st = drawCharacter(colour, st, y, pt, s[i]);
 		st += sp + 1;
 	}
 	return st;
 }
-//Functions related to uploading and checking the E-paper display using polling mode
-int readResponse(int Le)
-{
-	int flag = 0;
-	uint8_t rx[0];
-	waitTCBusy();
-	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-	for (int i=0; i<Le+2; i++) {
-		HAL_SPI_TransmitReceive(&hspi1, &tx, rx, 1, 1000);
-		//printf(" **%x ", (uint8_t)rxData);
-		if (i == 0 && rx[0] != 0x90)
-			flag = 1;
-		if (i == 1 && rx[0] != 0x00)
-			flag = 1;
-	}
-	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-	//printf("\n\rEnd of Response %d\n\r", flag);
-	return flag;
-}
-void uploadImageBuffer()
-{
-	int Le = 0;
-	resetDataPointer();
-	for (int i = 0; i*pkt_size < file_size; i++) {
-		do {
-			waitTCBusy();
-			// Send Image Data
-			HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-			// CMD
-			HAL_SPI_TransmitReceive(&hspi1, UploadImageData, rxData, 3, 1000);
-			// Image Data
-			HAL_SPI_TransmitReceive(&hspi1, &pkt_size, rxData, 1, 1000);
-			for (int j = 0; j < pkt_size; j++)
-				HAL_SPI_TransmitReceive(&hspi1, &img_buf[i*pkt_size+j], rxData, 1, 1000);
-			//HAL_SPI_TransmitReceive_DMA(&hspi1, &img_buf[i*pkt_size], rxData, 241);
-			HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-			//printf("\n\rSend Image Data (0x200100) Sent\n\r");
-		} while (readResponse(Le) == 1);
-	}
-}
-void waitTCBusy()
-{
-	uint8_t rx;
-	HAL_Delay(10);
-	rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
-	while (!rx) {
-		//printf("\n\rTC Busy\n\r");
-		rx = HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
-		HAL_Delay(10);
-	}
-}
-void resetDataPointer()
-{
-	int Le = 0;
-	waitTCBusy();
-	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-	HAL_SPI_TransmitReceive(&hspi1, ResetDataPointer, rxData, 3, 1000);
-	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-	printf("\n\rReset Data Pointer (0x200D00) Sent\n\r");
-	readResponse(Le);
-}
-void displayUpdate()
-{
-	int Le = 0;
-	waitTCBusy();
-	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-	HAL_SPI_TransmitReceive(&hspi1, DisplayUpdate, rxData, 3, 1000);
-	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_SET);
-	printf("\n\rDisplay Update (0x240100) Sent\n\r");
-	readResponse(Le);
-}
-//End of polling SPI functions
+
 //Functions related to uploading and checking the E-paper display using DMA-Interrupt mode
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi){
 	//printf("SPI has successfully sent and received");
@@ -906,13 +832,14 @@ void updateBufferDMA(){
 	printf("Now updating the buffer with DMA\n\r");
 	char c[10];
 	setAllWhite();
-	drawString(DISP_BLACK, 270, 10, 5, 10, itoa(batteryLife, c, 10), 4);
 	itoa(realspeed,c,10);
-	c[4] = 'K';
-	c[5] = 'M';
-	c[6] = '/';
-	c[7] = 'H';
 	drawString(DISP_BLACK, 100,100,5,10,c,10);
+	c[0] = 'K';
+	c[1] = 'M';
+	c[2] = '/';
+	c[3] = 'H';
+	c[4] = '\0';
+	drawString(DISP_BLACK, 150,100,3,5,c,4);
 	batteryImage(280, 240, 50, 4, 2, batteryLife);
 	batteryLife += 1;
 	if (batteryLife > 100)
@@ -982,22 +909,6 @@ uint8_t checkDMA_TCBusy(){
 	return (uint8_t)HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
 }
 //End of DMA SPI functions
-void testDraw(int i)
-{
-	//int loc;
-	char c[10];
-	setAllWhite();
-	drawString(DISP_BLACK, 270, 10, 5, 10, itoa(i, c, 10), 4);
-	itoa(realspeed,c,10);
-	c[4] = 'K';
-	c[5] = 'M';
-	c[6] = '/';
-	c[7] = 'H';
-	drawString(DISP_BLACK, 100,100,5,10,c,10);
-	batteryImage(280, 240, 50, 4, 2, i);
-	uploadImageBuffer();
-	displayUpdate();
-}
 void batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent){
 	char c[10];
 
