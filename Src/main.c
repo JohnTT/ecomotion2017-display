@@ -97,7 +97,7 @@ int main(void)
 
 	/* USER CODE BEGIN 1 */
 	//int counter = 89;
-	batteryLife = 7;
+	batteryLife = 90;
 	img_buf[0] = 0x33;
 	img_buf[1] = 0x01;
 	img_buf[2] = 0x90;
@@ -914,8 +914,9 @@ void updateBufferDMA(){
 	c[7] = 'H';
 	drawString(DISP_BLACK, 100,100,5,10,c,10);
 	batteryImage(280, 240, 50, 4, 2, batteryLife);
-	batteryLife += 7;
-	batteryLife = batteryLife % 100;
+	batteryLife += 1;
+	if (batteryLife > 100)
+	   batteryLife = 0;
 }
 void dmaImageBufferSection(){
 //	printf("in buffer section");
@@ -1012,13 +1013,12 @@ void batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int per
 	float batDrawPercent = (((2*size)+(size/5)) * ((float)percent) / 100);
 	drawRectangle(DISP_BLACK, x-2, y-2, x+(2*size)+2, y+(size)+2);
 	drawRectangle(DISP_BLACK, x+(2*size)-2, y+(3*size/10)-2, x+(2*size)+(size/5)+2, y+(7*size/10)+2);
-	if (batDrawPercent < 2*size) {
+	if (batDrawPercent <= 2*size) {
 		drawRectangle(DISP_WHITE, x+batDrawPercent, y, x+(2*size), y+(size));
 		drawRectangle(DISP_WHITE, x+(2*size), y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
 	}
-	else if (batDrawPercent <= 99.5)
-		drawRectangle(DISP_WHITE, x+batDrawPercent, y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
-
+	else if (batDrawPercent < ((2*size)+(size/5) - 1))
+		drawRectangle(DISP_WHITE, x+batDrawPercent+2, y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
 
 	drawString(DISP_INVERT, x+textLeft, y+textTop, fontSize, fontSpacing, itoa(percent, c, 10), 3);
 }
