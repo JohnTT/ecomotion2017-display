@@ -735,6 +735,20 @@ int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 		drawRectangle(colour, x,y+w/4,x+px,y+w/4+px);
 		drawRectangle(colour, x,y+w-w/4,x+px,y+w-w/4+px);
 		break;
+	case '%':
+		dx = 1;
+		dy = 2;
+		for (int t=0; t<pt; t++)
+			drawDiagonal(colour, x,y+w-px+t,x+l,y+t,dx,dy);
+		drawRectangle(colour, x, y, x+(l/4), y+(px/2));
+		drawRectangle(colour, x, y+(w/4), x+(l/4), y+(px/2)+(w/4));
+		drawRectangle(colour, x+3*(l/4), y+(w-(px/2)), x+l, y+w);
+		drawRectangle(colour, x+3*(l/4), y+(3*(w/4)), x+l, y+(w*3/4)+(px/2));
+		drawRectangle(colour, x, y, x+(px/4), y+(w/4)+(px/2));
+		drawRectangle(colour, x+(l/4)-(px/4), y, x+(l/4), y+(w/4)+(px/2));
+		drawRectangle(colour, x+3*(l/4), y+(3*(w/4)), x+3*(l/4)+(px/4), y+w);
+		drawRectangle(colour, x+l-(px/4), y+(3*(w/4)), x+l, y+w);
+		break;
 	default:
 		break;
 	}
@@ -839,8 +853,8 @@ void updateBufferDMA(){
 	c[2] = '/';
 	c[3] = 'H';
 	c[4] = '\0';
-	drawString(DISP_BLACK, 150,100,3,5,c,4);
-	batteryImage(280, 240, 50, 4, 2, batteryLife);
+	drawString(DISP_BLACK, 150,122,3,5,c,4);
+	int percentLoc = batteryImage(15, 225, 60, 4, 2, batteryLife);
 	batteryLife += 1;
 	if (batteryLife > 100)
 	   batteryLife = 0;
@@ -909,10 +923,10 @@ uint8_t checkDMA_TCBusy(){
 	return (uint8_t)HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
 }
 //End of DMA SPI functions
-void batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent){
+int batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent){
 	char c[10];
 
-	int numDigs = 1;
+	int numDigs = 2;
 	if (percent >= 10) {
 		numDigs++;
 	}
@@ -931,7 +945,17 @@ void batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int per
 	else if (batDrawPercent < ((2*size)+(size/5) - 1))
 		drawRectangle(DISP_WHITE, x+batDrawPercent+2, y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
 
-	drawString(DISP_INVERT, x+textLeft, y+textTop, fontSize, fontSpacing, itoa(percent, c, 10), 3);
+	char m[4];
+	itoa(percent, m, 10);
+	if (percent < 10)
+		m[1] = '%';
+	else if (percent < 100)
+		m[2] = '%';
+	else
+		m[3] = '%';
+
+	drawString(DISP_INVERT, x+textLeft, y+textTop, fontSize, fontSpacing, m, 4);
+	return (2*size)+(size/5)+2;
 }
 void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* theHcan) {
 	printf("Message Transmitted and Acknowledged");
