@@ -40,7 +40,7 @@ int drawString(dispColour colour, int x, int y, int pt, int sp, char s[], int si
 int batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent);
 void testDraw();
 void delay(int x);
-
+void screenSaverImage();
 // Functions defined for the TCM 441-230 using Polling
 void uploadImageBuffer();
 void resetDataPointer();

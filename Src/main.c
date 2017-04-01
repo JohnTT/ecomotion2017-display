@@ -592,8 +592,23 @@ int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 	case 'A':
 	case 'B':
 	case 'C':
+		dx = 1;
+		dy = 1;
+		// vert lines
+		drawRectangle(colour, x,y,x+px,y+w);
+		// horiz lines
+		drawRectangle(colour, x+px+1,y,x+l-px-1,y+px);
+		drawRectangle(colour, x+px+1,y+w-px,x+l-px-1,y+w);
+		//		for (int t=0; t<pt; t++)
+		//			drawDiagonal(colour, x+t,y+w,x+l,y,dx,dy);
+		break;
 	case 'D':
 	case 'E':
+		drawRectangle(colour, x,y,x+px,y+w);
+		drawRectangle(colour, x+px+1,y,x+l-px-1,y+px);
+		drawRectangle(colour, x+px+1,y+w-px,x+l-px-1,y+w);
+		drawRectangle(colour, x+px+1,y+w/2-px,x+l-px-1,y+w/2);
+		break;
 	case 'F':
 	case 'G':
 	case 'H':
@@ -630,7 +645,27 @@ int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 		drawRectangle(colour, x+l-px,y,x+l,y+w);
 		break;
 	case 'N':
+		drawRectangle(colour, x,y,x+px,y+w);
+		dx = 1;
+		dy = 2;
+		for (int t=0; t<pt; t++) {
+			drawDiagonal(colour, x+t,y,x+l-t,y+w,dx,dy);
+			drawDiagonal(colour, x+t,y+1,x+l-t,y+w,dx,dy);
+		}
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
+		break;
 	case 'O':
+		dx = 1;
+		dy = 1;
+		// vert lines
+		drawRectangle(colour, x,y,x+px,y+w);
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
+		// horiz lines
+		drawRectangle(colour, x+px+1,y,x+l-px-1,y+px);
+		drawRectangle(colour, x+px+1,y+w-px,x+l-px-1,y+w);
+		//		for (int t=0; t<pt; t++)
+		//			drawDiagonal(colour, x+t,y+w,x+l,y,dx,dy);
+		break;
 	case 'P':
 		drawRectangle(colour, x,y,x+l,y+px);
 		drawRectangle(colour, x,y,x+px,y+w);
@@ -650,12 +685,66 @@ int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 		drawRectangle(colour, x,y+w-w/4,x+px,y+w);
 		break;
 	case 'T':
+		drawRectangle(colour, x,y,x+l,y+px);
+		drawRectangle(colour, x+(l/2)-(px/2),y,x+(l/2)+(px/2),y+w);
+		break;
 	case 'U':
+		drawRectangle(colour, x,y,x+px,y+w);
+		drawRectangle(colour, x+l-px,y,x+l,y+w);
+		drawRectangle(colour, x+px+1,y,x+l-px-1,y+px);
+		break;
 	case 'V':
 	case 'W':
 	case 'X':
 	case 'Y':
 	case 'Z':
+	case 'c':
+		drawRectangle(colour, x,y+w/2-px/2,x+px,y+w);
+		drawRectangle(colour, x+px+1,y+w/2-(px/2),x+l,y+w/2+(px/2));
+		drawRectangle(colour, x+px+1,y+w-px,x+l,y+w);
+		break;
+	case 'e':
+		//vert lines
+		drawRectangle(colour, x,y+w/2-px/2,x+px,y+w);
+		drawRectangle(colour, x+l-px,y+w/2-px/2,x+l,y+3*w/4+px/2);
+		//horz lines
+		drawRectangle(colour, x+px+1,y+w/2-(px/2),x+l-px-1,y+w/2+(px/2));
+		drawRectangle(colour, x+px+1,y+3*w/4-(px/2),x+l-px-1,y+3*w/4+(px/2));
+		drawRectangle(colour, x+px+1,y+w-px,x+l,y+w);
+		break;
+	case 'i':
+		drawRectangle(colour, x+l/2,y+w/2,x+l/2+px,y+w);
+		drawRectangle(colour, x+l/2,y+w/2-6,x+l/2+px,y+w/2-3);
+		break;
+	case 'm':
+		drawRectangle(colour, x,y+w/4,x+px,y+w);
+		dx = 1;
+		dy = 1;
+		for (int t=0; t<px; t++) {
+			drawDiagonal(colour, x+t,y+w/4,x+l/2+t,y+w/2,dx,dy);
+			drawDiagonal(colour, x+l-t,y+w/4,x+l/2-t,y+w/2,dx,dy);
+			drawDiagonal(colour, x,y+w/4+t,x+l/2,y+w/2+t,dx,dy);
+			drawDiagonal(colour, x+l,y+w/4+t,x+l-l/2,y+w/2+t,dx,dy);
+		}
+		drawRectangle(colour, x+l-px,y+w/4,x+l,y+w);
+		break;
+	case 'n':
+		drawRectangle(colour, x,y+w/2,x+px,y+w);
+		drawRectangle(colour, x+l-px,y+w/2,x+l,y+w);
+		drawRectangle(colour, x+px,y+w/2,x+l-px,y+w/2+px);
+		break;
+	case 'o':
+		//vert lines
+		drawRectangle(colour, x,y+w/2-px/2,x+px,y+w);
+		drawRectangle(colour, x+l-px,y+w/2,x+l,y+w);
+		//hori lines
+		drawRectangle(colour, x+px+1,y+w/2-(px/2),x+l,y+w/2+(px/2));
+		drawRectangle(colour, x+px+1,y+w-px,x+l,y+w);
+		break;
+	case 't':
+		drawRectangle(colour, x+l/2-px/2,y+w/4,x+l/2+px/2,y+w);
+		drawRectangle(colour, x,y+w/2,x+l,y+w/2+px);
+		break;
 	case '0':
 		dx = 1;
 		dy = 1;
@@ -846,18 +935,33 @@ void updateBufferDMA(){
 	printf("Now updating the buffer with DMA\n\r");
 	char c[10];
 	setAllWhite();
-	itoa(realspeed,c,10);
-	drawString(DISP_BLACK, 100,100,5,10,c,10);
-	c[0] = 'K';
-	c[1] = 'M';
-	c[2] = '/';
-	c[3] = 'H';
-	c[4] = '\0';
-	drawString(DISP_BLACK, 150,122,3,5,c,4);
-	int percentLoc = batteryImage(15, 225, 60, 4, 2, batteryLife);
-	batteryLife += 1;
-	if (batteryLife > 100)
-	   batteryLife = 0;
+//	itoa(realspeed,c,10);
+//	drawString(DISP_BLACK, 100,100,5,10,c,10);
+//	c[0] = 'K';
+//	c[1] = 'M';
+//	c[2] = '/';
+//	c[3] = 'H';
+//	c[4] = '\0';
+//	drawString(DISP_BLACK, 150,122,3,5,c,4);
+//	int percentLoc = batteryImage(15, 225, 60, 4, 2, batteryLife);
+//	batteryLife += 1;
+//	if (batteryLife > 100)
+//	   batteryLife = 0;
+	screenSaverImage();
+}
+void screenSaverImage(){
+	char f[10];
+	f[0] = 'e';
+	f[1] = 'c';
+	f[2] = 'o';
+	f[3] = 'm';
+	f[4] = 'o';
+	f[5] = 't';
+	f[6] = 'i';
+	f[7] = 'o';
+	f[8] = 'n';
+	f[9] = '\0';
+	drawString(DISP_BLACK, 50,100,5,10,f,10);
 }
 void dmaImageBufferSection(){
 //	printf("in buffer section");
@@ -923,6 +1027,7 @@ uint8_t checkDMA_TCBusy(){
 	return (uint8_t)HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
 }
 //End of DMA SPI functions
+
 int batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent){
 	char c[10];
 
