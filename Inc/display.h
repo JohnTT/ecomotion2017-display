@@ -23,6 +23,14 @@ typedef enum DMA_sections_t {
 	DISPLAY_IMAGE,
 	UPDATE_BUFFER
 } DMA_sections;
+
+typedef enum {
+	ecoMotion_Throttle = 0x00,
+	ecoMotion_Master = 0x10,
+	ecoMotion_Display = 0x20,
+	ecoMotion_Error = 0xFF
+} CAN_DEVICE_ID;
+
 static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleTypeDef* theHcan);
 void init();
 void waitTCBusy();

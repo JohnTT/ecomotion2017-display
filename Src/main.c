@@ -139,8 +139,18 @@ int main(void)
 		/* USER CODE END WHILE */
 		/* USER CODE BEGIN 3 */
 
-		printf("Test!!!");
-		printf("\n\r");
+		HAL_StatusTypeDef status;
+		hcan.pTxMsg->IDE = CAN_ID_STD;
+		hcan.pTxMsg->RTR = CAN_RTR_DATA;
+		hcan.pTxMsg->StdId = ecoMotion_Display;
+		//hcan1.pTxMsg->ExtId = ((uint32_t)CAN_PACKET_SET_DUTY << 8) | controller_id;
+		hcan.pTxMsg->DLC = 0;
+		status = HAL_CAN_Transmit_IT(&hcan);
+		if (status != HAL_OK) {
+			printf("CAN Transmit Error");
+			printf("\n\r");
+			Error_Handler();
+		}
 		//flag = 0;
 		//testDraw(counter);
 		//		counter += 11;
@@ -919,8 +929,8 @@ void readResponseDMA(){
 	}
 	else if (pkt_section < MAX_SECTION){
 		//printf("We good, data sent correctly\n\r");
-//		printf(itoa(pkt_section, strConvert, 10));
-//		printf("\n\r");
+		//		printf(itoa(pkt_section, strConvert, 10));
+		//		printf("\n\r");
 		pkt_section++;
 		loop_section = UPLOAD_IMAGE_DATA; //do the loop again
 	}
@@ -935,18 +945,18 @@ void updateBufferDMA(){
 	printf("Now updating the buffer with DMA\n\r");
 	char c[10];
 	setAllWhite();
-//	itoa(realspeed,c,10);
-//	drawString(DISP_BLACK, 100,100,5,10,c,10);
-//	c[0] = 'K';
-//	c[1] = 'M';
-//	c[2] = '/';
-//	c[3] = 'H';
-//	c[4] = '\0';
-//	drawString(DISP_BLACK, 150,122,3,5,c,4);
-//	int percentLoc = batteryImage(15, 225, 60, 4, 2, batteryLife);
-//	batteryLife += 1;
-//	if (batteryLife > 100)
-//	   batteryLife = 0;
+	//	itoa(realspeed,c,10);
+	//	drawString(DISP_BLACK, 100,100,5,10,c,10);
+	//	c[0] = 'K';
+	//	c[1] = 'M';
+	//	c[2] = '/';
+	//	c[3] = 'H';
+	//	c[4] = '\0';
+	//	drawString(DISP_BLACK, 150,122,3,5,c,4);
+	//	int percentLoc = batteryImage(15, 225, 60, 4, 2, batteryLife);
+	//	batteryLife += 1;
+	//	if (batteryLife > 100)
+	//	   batteryLife = 0;
 	screenSaverImage();
 }
 void screenSaverImage(){
@@ -964,8 +974,8 @@ void screenSaverImage(){
 	drawString(DISP_BLACK, 50,100,5,10,f,10);
 }
 void dmaImageBufferSection(){
-//	printf("in buffer section");
-//	printf("\n\r");
+	//	printf("in buffer section");
+	//	printf("\n\r");
 	isDMAFinished = 0;
 	switch (loop_section){
 	case RESET_DATA_POINTER:
@@ -1020,8 +1030,8 @@ void dmaImageBufferSection(){
 		loop_section = RESET_DATA_POINTER;
 		break;
 	}
-//	printf("out buffer section");
-//	printf("\n\r");
+	//	printf("out buffer section");
+	//	printf("\n\r");
 }
 uint8_t checkDMA_TCBusy(){
 	return (uint8_t)HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
@@ -1136,9 +1146,14 @@ void Error_Handler(void)
 	/* User can add his own implementation to report the HAL error return state */
 	printf("Error Handler");
 	printf("\n\r");
-	while(1)
-	{
-	}
+	HAL_StatusTypeDef status;
+	do {
+		hcan.pTxMsg->IDE = CAN_ID_STD;
+		hcan.pTxMsg->RTR = CAN_RTR_DATA;
+		hcan.pTxMsg->StdId = ecoMotion_Error - ecoMotion_Display;
+		hcan.pTxMsg->DLC = 0;
+		status = HAL_CAN_Transmit_IT(&hcan);
+	} while (status != HAL_OK);
 	/* USER CODE END Error_Handler */
 }
 #ifdef USE_FULL_ASSERT
