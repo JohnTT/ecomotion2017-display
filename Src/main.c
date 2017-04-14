@@ -35,7 +35,7 @@
 #include "stm32f3xx_hal.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "display.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -59,11 +59,6 @@ uint8_t GetSystemInfo[4] = {0x31, 0x01, 0x01, 0x00};
 uint8_t DisplayUpdate[3] = {0x24, 0x01, 0x00};
 uint8_t UploadImageData[3] = {0x20, 0x01, 0x00};
 uint8_t ResetDataPointer[3] = {0x20, 0x0D, 0x00};
-typedef enum dispColour_t {
-	DISP_BLACK,
-	DISP_WHITE,
-	DISP_INVERT
-} dispColour;
 int value = 0;
 int realspeed = 0; // Real Wheel speed
 int flag = 0;
@@ -90,9 +85,7 @@ static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleType
 
 int main(void)
 {
-
 	/* USER CODE BEGIN 1 */
-	int counter = 89;
 	/* USER CODE END 1 */
 
 	/* MCU Configuration----------------------------------------------------------*/
@@ -107,7 +100,7 @@ int main(void)
 	MX_GPIO_Init();
 	MX_USART2_UART_Init();
 	//MX_ADC1_Init();
-	//MX_CAN_Init();
+	MX_CAN_Init();
 	MX_SPI1_Init();
 
 	/* USER CODE BEGIN 2 */
@@ -116,18 +109,28 @@ int main(void)
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
+	HAL_Delay(1000);
 	while (1)
 	{
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
+		printf("MAIN LOOP\n\r");
 
-		printf("Test");
-		printf("\n\r");
-		flag = 0;
-		testDraw(counter);
-//		counter += 11;
-//		counter %= 100;
+		HAL_StatusTypeDef status;
+		//printf("1\n\r");
+		hcan.pTxMsg->IDE = CAN_ID_EXT;
+		//printf("2\n\r");
+		hcan.pTxMsg->RTR = CAN_RTR_DATA;
+		hcan.pTxMsg->ExtId = AllCell_Bat_Voltage_ID;
+		hcan.pTxMsg->Data[0] = 40;
+		hcan.pTxMsg->DLC = 8;
+
+		status = HAL_CAN_Transmit_IT(&hcan);
+		if (status != HAL_OK) {
+			Error_Handler();
+		}
+		printf("Finished sending data\n\r");
 
 
 
@@ -253,7 +256,7 @@ static void MX_CAN_Init(void)
 	__HAL_RCC_CAN1_CLK_ENABLE();
 	hcan.Instance = CAN;
 	hcan.Init.Mode = CAN_MODE_NORMAL;
-	setCANbitRate(1000, 32, &hcan);
+	setCANbitRate(125, 32, &hcan);
 	hcan.Init.TTCM = DISABLE;
 	hcan.Init.ABOM = DISABLE;
 	hcan.Init.AWUM = DISABLE;
@@ -317,7 +320,7 @@ static void MX_USART2_UART_Init(void)
 {
 
 	huart2.Instance = USART2;
-	huart2.Init.BaudRate = 9600;
+	huart2.Init.BaudRate = 38400;
 	huart2.Init.WordLength = UART_WORDLENGTH_8B;
 	huart2.Init.StopBits = UART_STOPBITS_1;
 	huart2.Init.Parity = UART_PARITY_NONE;
@@ -636,8 +639,8 @@ int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 		// horiz lines
 		drawRectangle(colour, x+px+1,y,x+l-px-1,y+px);
 		drawRectangle(colour, x+px+1,y+w-px,x+l-px-1,y+w);
-//		for (int t=0; t<pt; t++)
-//			drawDiagonal(colour, x+t,y+w,x+l,y,dx,dy);
+		//		for (int t=0; t<pt; t++)
+		//			drawDiagonal(colour, x+t,y+w,x+l,y,dx,dy);
 		break;
 	case '1':
 		dx = 1;
@@ -727,14 +730,14 @@ void uploadImageBuffer()
 {
 	int Le = 0;
 	resetDataPointer();
-    img_buf[0] = 0x33;
-    img_buf[1] = 0x01;
-    img_buf[2] = 0x90;
-    img_buf[3] = 0x01;
-    img_buf[4] = 0x2C;
-    img_buf[5] = 0x01;
-    for (int i=6; i<16; i++)
-        img_buf[i] = 0x00;
+	img_buf[0] = 0x33;
+	img_buf[1] = 0x01;
+	img_buf[2] = 0x90;
+	img_buf[3] = 0x01;
+	img_buf[4] = 0x2C;
+	img_buf[5] = 0x01;
+	for (int i=6; i<16; i++)
+		img_buf[i] = 0x00;
 	for (int i = 0; i*pkt_size < file_size; i++) {
 		do {
 			waitTCBusy();
@@ -801,7 +804,7 @@ void batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int per
 	int textTop = (size / 2) - (4 * fontSize);
 	float batDrawPercent = (((2*size)+(size/5)) * ((float)percent) / 100);
 	drawRectangle(DISP_BLACK, x-2, y-2, x+(2*size)+2, y+(size)+2);
-    drawRectangle(DISP_BLACK, x+(2*size)-2, y+(3*size/10)-2, x+(2*size)+(size/5)+2, y+(7*size/10)+2);
+	drawRectangle(DISP_BLACK, x+(2*size)-2, y+(3*size/10)-2, x+(2*size)+(size/5)+2, y+(7*size/10)+2);
 	if (batDrawPercent < 2*size) {
 		drawRectangle(DISP_WHITE, x+batDrawPercent, y, x+(2*size), y+(size));
 		drawRectangle(DISP_WHITE, x+(2*size), y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
@@ -890,11 +893,18 @@ void Error_Handler(void)
 {
 	/* USER CODE BEGIN Error_Handler */
 	/* User can add his own implementation to report the HAL error return state */
-	printf("Error Handler");
-	printf("\n\r");
-	while(1)
+	HAL_StatusTypeDef status;
+	do
 	{
-	}
+		printf("Error Handler\n\r");
+		hcan.pTxMsg->IDE = CAN_ID_STD;
+		hcan.pTxMsg->RTR = CAN_RTR_DATA;
+		hcan.pTxMsg->StdId = ecoMotion_Error_Master;
+		hcan.pTxMsg->DLC = 0;
+		status = HAL_CAN_Transmit_IT(&hcan);
+		HAL_Delay(100);
+	} while(status != HAL_OK);
+	/* USER CODE END Error_Handler */
 	/* USER CODE END Error_Handler */
 }
 
