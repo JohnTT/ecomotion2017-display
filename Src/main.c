@@ -98,7 +98,7 @@ int main(void)
 
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
-	MX_USART2_UART_Init();
+	//MX_USART2_UART_Init();
 	//MX_ADC1_Init();
 	MX_CAN_Init();
 	MX_SPI1_Init();
@@ -256,7 +256,7 @@ static void MX_CAN_Init(void)
 	__HAL_RCC_CAN1_CLK_ENABLE();
 	hcan.Instance = CAN;
 	hcan.Init.Mode = CAN_MODE_NORMAL;
-	setCANbitRate(125, 32, &hcan);
+	setCANbitRate(250, 32, &hcan);
 	hcan.Init.TTCM = DISABLE;
 	hcan.Init.ABOM = DISABLE;
 	hcan.Init.AWUM = DISABLE;
