@@ -36,7 +36,6 @@
 /* USER CODE BEGIN Includes */
 #include "display.h"
 /* USER CODE END Includes */
-
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 CAN_HandleTypeDef hcan;
@@ -47,6 +46,9 @@ TIM_HandleTypeDef htim1;
 UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+AllCell_Bat_RTC displayRTC;
+displayBMSTypeDef displayBMS;
+
 int file_size = 15016;
 int header = 16;
 uint8_t rxData[4];
@@ -139,20 +141,7 @@ int main(void)
 		/* USER CODE END WHILE */
 		/* USER CODE BEGIN 3 */
 
-		HAL_StatusTypeDef status;
-		hcan.pTxMsg->IDE = CAN_ID_STD;
-		hcan.pTxMsg->RTR = CAN_RTR_DATA;
-		hcan.pTxMsg->StdId = ecoMotion_Display;
-		//hcan1.pTxMsg->ExtId = ((uint32_t)CAN_PACKET_SET_DUTY << 8) | controller_id;
-		hcan.pTxMsg->DLC = 0;
-		status = HAL_CAN_Transmit_IT(&hcan);
-		if (status != HAL_OK) {
-			printf("CAN Transmit Error");
-			printf("\n\r");
-			Error_Handler();
-		}
 		//flag = 0;
-		//testDraw(counter);
 		//		counter += 11;
 		//		counter %= 100;
 		//      must find a way to make waitTCBusy without polling, somehow read a GPIO port with interrupts
@@ -943,20 +932,43 @@ void displayImageDMA(){
 }
 void updateBufferDMA(){
 	printf("Now updating the buffer with DMA\n\r");
-	char c[10];
-	setAllWhite();
-	//	itoa(realspeed,c,10);
-	//	drawString(DISP_BLACK, 100,100,5,10,c,10);
-	//	c[0] = 'K';
-	//	c[1] = 'M';
-	//	c[2] = '/';
-	//	c[3] = 'H';
-	//	c[4] = '\0';
-	//	drawString(DISP_BLACK, 150,122,3,5,c,4);
-	//	int percentLoc = batteryImage(15, 225, 60, 4, 2, batteryLife);
-	//	batteryLife += 1;
-	//	if (batteryLife > 100)
-	//	   batteryLife = 0;
+
+//	char c[10];
+//	const static uint8_t batteryX, batteryY;
+//	const static uint8_t rearSpeedX, rearSpeedY;
+//	const static uint8_t bmsCurrentX, bmsCurrentY;
+//	const static uint8_t bmsVoltageX, bmsVoltageY;
+//	const static uint8_t bmsTemperatureX, bmsTemperatureY;
+//
+//	setAllWhite();
+//
+//	// Rear Wheel Speed
+//	itoa(realspeed,c,10);
+//	drawString(DISP_BLACK, 100,100,5,10,c,10);
+//	c[0] = 'K';
+//	c[1] = 'M';
+//	c[2] = '/';
+//	c[3] = 'H';
+//	c[4] = '\0';
+//	drawString(DISP_BLACK, 150,122,3,5,c,4);
+//
+//	// BMS Current Draw
+//
+//	// BMS Voltage
+//
+//	// BMS Temperature - TO DO Warning Indicator
+//
+//	// Battery Percentage/State of Charge
+//	int percentLoc = batteryImage(15, 225, 60, 4, 2, uint8_t(displayBMS.bat_percentage));
+//	batteryLife += 1;
+//	if (batteryLife > 100)
+//		batteryLife = 0;
+//
+//	// Real Time Clock - Current Time
+//
+//
+
+	// Screensaver Image
 	screenSaverImage();
 }
 void screenSaverImage(){
@@ -1077,23 +1089,69 @@ void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* theHcan) {
 	printf("\n\r");
 }
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
-	long int ID;
-	printf("Message Received and Acknowledged from ID ");
-	ID = theHcan->pRxMsg->ExtId;
-	if (ID == 0)
+
+#ifdef _CAN_PRINTF
+	uint32_t ID;
+	if (theHcan->pRxMsg->IDE == CAN_ID_EXT)
+		ID = theHcan->pRxMsg->ExtId;
+	else
 		ID = theHcan->pRxMsg->StdId;
-	printf(itoa(ID,strConvert,10));
-	printf("\n\r");
+		printf("Message Received and Acknowledged from ID %x\n\r", ID);
+#endif
+
+	if (theHcan->pRxMsg->IDE == CAN_ID_STD) {
+		parseCANMessage(theHcan->pRxMsg);
+	}
+
 	if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
 		Error_Handler();
 	}
-	//modifications to buffer will happen before we do the reDraw.
-	doReDraw = 1;
-	//Additional information gathering and modification here
 }
+
+void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
+	static const float _Current_Factor = 0.05;
+	static const float _Voltage_Factor = 0.05;
+	static const float _Impedance_Factor = 0.01;
+	static const float _CellVolt_Factor = 0.01;
+	static const float _Day_Factor = 0.25;
+	static const float _Second_Factor = 0.25;
+	static const float _SOC_Factor = 0.5;
+	static const float _Capacity_Factor = 0.01;
+
+
+	static const uint16_t _Current_Offset = 1600;
+	static const uint16_t _Temp_Offset = 40;
+	static const uint32_t _PwAvailable_Offset = 2000000000;
+	static const float _Year_Offset = 1985;
+
+	masterCAN1_BMSTypeDef bmsBuf;
+
+	switch (pRxMsg->StdId) {
+	case ecoMotion_MasterBMS:
+		memcpy(&bmsBuf, pRxMsg->Data, sizeof(bmsBuf));
+		displayBMS.current = bmsBuf.current *_Current_Factor - _Current_Offset;
+		displayBMS.voltage = bmsBuf.voltage *_Voltage_Factor;
+		displayBMS.temperature = bmsBuf.temperature;
+		displayBMS.bat_percentage = bmsBuf.bat_percentage * _SOC_Factor;
+		break;
+	case ecoMotion_MasterRTC:
+		memcpy(&displayRTC, pRxMsg->Data, sizeof(displayRTC));
+		displayRTC.Day *= _Day_Factor;
+		displayRTC.Second *= _Second_Factor;
+		break;
+	default:
+		break;
+	}
+
+	// modifications to buffer will happen before we do the reDraw.
+	doReDraw = 1;
+}
+
+#ifdef _DEBUG_ON
 void __io_putchar(uint8_t ch) {
 	HAL_UART_Transmit(&huart2, &ch, 1, 1);
 }
+#endif
 /*
 static void MX_CAN_Init(void)
 {
@@ -1144,15 +1202,19 @@ void Error_Handler(void)
 {
 	/* USER CODE BEGIN Error_Handler */
 	/* User can add his own implementation to report the HAL error return state */
-	printf("Error Handler");
-	printf("\n\r");
+	printf("Error Handler\n\r");
 	HAL_StatusTypeDef status;
 	do {
-		hcan.pTxMsg->IDE = CAN_ID_STD;
+		hcan.pTxMsg->IDE = CAN_ID_EXT;
 		hcan.pTxMsg->RTR = CAN_RTR_DATA;
-		hcan.pTxMsg->StdId = ecoMotion_Error - ecoMotion_Display;
+		hcan.pTxMsg->StdId = ecoMotion_Error_Display;
 		hcan.pTxMsg->DLC = 0;
+
+		printf("Error Handler - Display - CAN1 ID: %lx\n\r", hcan.pTxMsg->ExtId);
+
+#ifdef _ERRORHANDLER_CAN1TRANSMIT
 		status = HAL_CAN_Transmit_IT(&hcan);
+#endif
 	} while (status != HAL_OK);
 	/* USER CODE END Error_Handler */
 }
