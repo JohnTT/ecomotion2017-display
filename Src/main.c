@@ -1,40 +1,41 @@
 /**
-  ******************************************************************************
-  * File Name          : main.c
-  * Description        : Main program body
-  ******************************************************************************
-  *
-  * COPYRIGHT(c) 2017 STMicroelectronics
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * File Name          : main.c
+ * Description        : Main program body
+ ******************************************************************************
+ *
+ * COPYRIGHT(c) 2017 STMicroelectronics
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *   1. Redistributions of source code must retain the above copyright notice,
+ *      this list of conditions and the following disclaimer.
+ *   2. Redistributions in binary form must reproduce the above copyright notice,
+ *      this list of conditions and the following disclaimer in the documentation
+ *      and/or other materials provided with the distribution.
+ *   3. Neither the name of STMicroelectronics nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ ******************************************************************************
+ */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f3xx_hal.h"
 
 /* USER CODE BEGIN Includes */
+#include <string.h>
 #include "display.h"
 /* USER CODE END Includes */
 
@@ -86,6 +87,36 @@ int sentAllData = 0;
 uint8_t rxResponse[2];
 uint8_t txResponse[2] = {0x00, 0x00};
 //End of New DMA variables
+
+//Adafruit 7-seg variables
+uint8_t i2c_addr_7seg = 0x70;
+uint16_t displaybuffer_7seg[8];
+uint8_t position_7seg = 0;
+static const uint8_t numbertable[] = {
+		0x3F, /* 0 */
+		0x06, /* 1 */
+		0x5B, /* 2 */
+		0x4F, /* 3 */
+		0x66, /* 4 */
+		0x6D, /* 5 */
+		0x7D, /* 6 */
+		0x07, /* 7 */
+		0x7F, /* 8 */
+		0x6F, /* 9 */
+		0x77, /* a */
+		0x7C, /* b */
+		0x39, /* C */
+		0x5E, /* d */
+		0x79, /* E */
+		0x71, /* F */
+};
+
+const uint16_t i2c_timeout = 1000;
+
+//cmds
+uint8_t i2c_cmd_oscOn = 0x21;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -110,7 +141,7 @@ static void MX_I2C1_Init(void);
 int main(void)
 {
 
-  /* USER CODE BEGIN 1 */
+	/* USER CODE BEGIN 1 */
 	//int counter = 89;
 	batteryLife = 90;
 	img_buf[0] = 0x33;
@@ -122,39 +153,39 @@ int main(void)
 	for (int i=6; i<16; i++)
 		img_buf[i] = 0x00;
 	hasResetDataPointer = 0;
-  /* USER CODE END 1 */
+	/* USER CODE END 1 */
 
-  /* MCU Configuration----------------------------------------------------------*/
+	/* MCU Configuration----------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
 
-  /* Configure the system clock */
-  SystemClock_Config();
+	/* Configure the system clock */
+	SystemClock_Config();
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_USART2_UART_Init();
-  MX_ADC1_Init();
-  MX_CAN_Init();
-  MX_SPI1_Init();
-  MX_TIM1_Init();
-  MX_I2C1_Init();
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	//MX_DMA_Init();
+	MX_USART2_UART_Init();
+	MX_ADC1_Init();
+	//MX_CAN_Init();
+	//MX_SPI1_Init();
+	//MX_TIM1_Init();
+	MX_I2C1_Init();
 
-  /* USER CODE BEGIN 2 */
-	HAL_TIM_Base_Start_IT(&htim1); //start the base for update interrupts
-  /* USER CODE END 2 */
+	/* USER CODE BEGIN 2 */
+	//HAL_TIM_Base_Start_IT(&htim1); //start the base for update interrupts
+	/* USER CODE END 2 */
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+	/* Infinite loop */
+	/* USER CODE BEGIN WHILE */
 	flag = 0;
 	updateBufferDMA();
 	while (1)
 	{
-  /* USER CODE END WHILE */
+		/* USER CODE END WHILE */
 
-  /* USER CODE BEGIN 3 */
+		/* USER CODE BEGIN 3 */
 
 		//flag = 0;
 		//		counter += 11;
@@ -165,122 +196,124 @@ int main(void)
 		//      and try again in a bit.
 		//      Need to add a timer with interrupt call checks
 		//
+		printf("MAIN LOOP\n\r");
+		test_7seg();
 
-		//HAL_Delay(10);
+		HAL_Delay(1000);
 	}
-  /* USER CODE END 3 */
+	/* USER CODE END 3 */
 
 }
 
 /** System Clock Configuration
-*/
+ */
 void SystemClock_Config(void)
 {
 
-  RCC_OscInitTypeDef RCC_OscInitStruct;
-  RCC_ClkInitTypeDef RCC_ClkInitStruct;
-  RCC_PeriphCLKInitTypeDef PeriphClkInit;
+	RCC_OscInitTypeDef RCC_OscInitStruct;
+	RCC_ClkInitTypeDef RCC_ClkInitStruct;
+	RCC_PeriphCLKInitTypeDef PeriphClkInit;
 
-    /**Initializes the CPU, AHB and APB busses clocks 
-    */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = 16;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
-  RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV2;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/**Initializes the CPU, AHB and APB busses clocks
+	 */
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
+	RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
+	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+	RCC_OscInitStruct.HSICalibrationValue = 16;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
+	RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV2;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-    /**Initializes the CPU, AHB and APB busses clocks 
-    */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+	/**Initializes the CPU, AHB and APB busses clocks
+	 */
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+			|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1
-                              |RCC_PERIPHCLK_TIM1|RCC_PERIPHCLK_ADC12;
-  PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
-  PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV1;
-  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
-  PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1
+			|RCC_PERIPHCLK_TIM1|RCC_PERIPHCLK_ADC12;
+	PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
+	PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV1;
+	PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
+	PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
+	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-    /**Configure the Systick interrupt time 
-    */
-  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
+	/**Configure the Systick interrupt time
+	 */
+	HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 
-    /**Configure the Systick 
-    */
-  HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+	/**Configure the Systick
+	 */
+	HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
-  /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+	/* SysTick_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
 /* ADC1 init function */
 static void MX_ADC1_Init(void)
 {
 
-  ADC_MultiModeTypeDef multimode;
-  ADC_ChannelConfTypeDef sConfig;
+	ADC_MultiModeTypeDef multimode;
+	ADC_ChannelConfTypeDef sConfig;
 
-    /**Common config 
-    */
-  hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  hadc1.Init.LowPowerAutoWait = DISABLE;
-  hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
-  if (HAL_ADC_Init(&hadc1) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/**Common config
+	 */
+	hadc1.Instance = ADC1;
+	hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+	hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+	hadc1.Init.ContinuousConvMode = DISABLE;
+	hadc1.Init.DiscontinuousConvMode = DISABLE;
+	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	hadc1.Init.NbrOfConversion = 1;
+	hadc1.Init.DMAContinuousRequests = DISABLE;
+	hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+	hadc1.Init.LowPowerAutoWait = DISABLE;
+	hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
+	if (HAL_ADC_Init(&hadc1) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-    /**Configure the ADC multi-mode 
-    */
-  multimode.Mode = ADC_MODE_INDEPENDENT;
-  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/**Configure the ADC multi-mode
+	 */
+	multimode.Mode = ADC_MODE_INDEPENDENT;
+	if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-    /**Configure Regular Channel 
-    */
-  sConfig.Channel = ADC_CHANNEL_1;
-  sConfig.Rank = 1;
-  sConfig.SingleDiff = ADC_SINGLE_ENDED;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-  sConfig.OffsetNumber = ADC_OFFSET_NONE;
-  sConfig.Offset = 0;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/**Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_1;
+	sConfig.Rank = 1;
+	sConfig.SingleDiff = ADC_SINGLE_ENDED;
+	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+	sConfig.OffsetNumber = ADC_OFFSET_NONE;
+	sConfig.Offset = 0;
+	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
 }
 
@@ -311,33 +344,33 @@ static void MX_ADC1_Init(void)
 static void MX_I2C1_Init(void)
 {
 
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x2000090E;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	hi2c1.Instance = I2C1;
+	hi2c1.Init.Timing = 0x2000090E;
+	hi2c1.Init.OwnAddress1 = 0;
+	hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+	hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+	hi2c1.Init.OwnAddress2 = 0;
+	hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+	hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+	hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+	if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-    /**Configure Analogue filter 
-    */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/**Configure Analogue filter
+	 */
+	if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-    /**Configure Digital filter 
-    */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/**Configure Digital filter
+	 */
+	if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
 }
 
@@ -345,24 +378,24 @@ static void MX_I2C1_Init(void)
 static void MX_SPI1_Init(void)
 {
 
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
-  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 7;
-  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	hspi1.Instance = SPI1;
+	hspi1.Init.Mode = SPI_MODE_MASTER;
+	hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+	hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+	hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
+	hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
+	hspi1.Init.NSS = SPI_NSS_SOFT;
+	hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+	hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+	hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+	hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+	hspi1.Init.CRCPolynomial = 7;
+	hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+	hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
+	if (HAL_SPI_Init(&hspi1) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
 }
 
@@ -405,80 +438,80 @@ static void MX_SPI1_Init(void)
 static void MX_USART2_UART_Init(void)
 {
 
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 9600;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	huart2.Instance = USART2;
+	huart2.Init.BaudRate = 9600;
+	huart2.Init.WordLength = UART_WORDLENGTH_8B;
+	huart2.Init.StopBits = UART_STOPBITS_1;
+	huart2.Init.Parity = UART_PARITY_NONE;
+	huart2.Init.Mode = UART_MODE_TX_RX;
+	huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+	huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+	huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+	if (HAL_UART_Init(&huart2) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
 }
 
 /** 
-  * Enable DMA controller clock
-  */
+ * Enable DMA controller clock
+ */
 static void MX_DMA_Init(void) 
 {
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
+	/* DMA controller clock enable */
+	__HAL_RCC_DMA1_CLK_ENABLE();
 
-  /* DMA interrupt init */
-  /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-  /* DMA1_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+	/* DMA interrupt init */
+	/* DMA1_Channel2_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+	/* DMA1_Channel3_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
 
 }
 
 /** Configure pins as 
-        * Analog 
-        * Input 
-        * Output
-        * EVENT_OUT
-        * EXTI
-*/
+ * Analog
+ * Input
+ * Output
+ * EVENT_OUT
+ * EXTI
+ */
 static void MX_GPIO_Init(void)
 {
 
-  GPIO_InitTypeDef GPIO_InitStruct;
+	GPIO_InitTypeDef GPIO_InitStruct;
 
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+	/* GPIO Ports Clock Enable */
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_GPIOF_CLK_ENABLE();
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	__HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+	/*Configure GPIO pin Output Level */
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+	/*Configure GPIO pin : B1_Pin */
+	GPIO_InitStruct.Pin = B1_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SPI1_CSn_Pin */
-  GPIO_InitStruct.Pin = SPI1_CSn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SPI1_CSn_GPIO_Port, &GPIO_InitStruct);
+	/*Configure GPIO pin : SPI1_CSn_Pin */
+	GPIO_InitStruct.Pin = SPI1_CSn_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(SPI1_CSn_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : TC_Busyn_Pin */
-  GPIO_InitStruct.Pin = TC_Busyn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(TC_Busyn_GPIO_Port, &GPIO_InitStruct);
+	/*Configure GPIO pin : TC_Busyn_Pin */
+	GPIO_InitStruct.Pin = TC_Busyn_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(TC_Busyn_GPIO_Port, &GPIO_InitStruct);
 
 }
 
@@ -900,6 +933,7 @@ int drawString(dispColour colour, int x, int y, int pt, int sp, char s[], int s_
 	return st;
 }
 
+
 //Functions related to uploading and checking the E-paper display using DMA-Interrupt mode
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi){
 	//printf("SPI has successfully sent and received");
@@ -978,40 +1012,40 @@ void displayImageDMA(){
 void updateBufferDMA(){
 	printf("Now updating the buffer with DMA\n\r");
 
-//	char c[10];
-//	const static uint8_t batteryX, batteryY;
-//	const static uint8_t rearSpeedX, rearSpeedY;
-//	const static uint8_t bmsCurrentX, bmsCurrentY;
-//	const static uint8_t bmsVoltageX, bmsVoltageY;
-//	const static uint8_t bmsTemperatureX, bmsTemperatureY;
-//
-//	setAllWhite();
-//
-//	// Rear Wheel Speed
-//	itoa(realspeed,c,10);
-//	drawString(DISP_BLACK, 100,100,5,10,c,10);
-//	c[0] = 'K';
-//	c[1] = 'M';
-//	c[2] = '/';
-//	c[3] = 'H';
-//	c[4] = '\0';
-//	drawString(DISP_BLACK, 150,122,3,5,c,4);
-//
-//	// BMS Current Draw
-//
-//	// BMS Voltage
-//
-//	// BMS Temperature - TO DO Warning Indicator
-//
-//	// Battery Percentage/State of Charge
-//	int percentLoc = batteryImage(15, 225, 60, 4, 2, uint8_t(displayBMS.bat_percentage));
-//	batteryLife += 1;
-//	if (batteryLife > 100)
-//		batteryLife = 0;
-//
-//	// Real Time Clock - Current Time
-//
-//
+	//	char c[10];
+	//	const static uint8_t batteryX, batteryY;
+	//	const static uint8_t rearSpeedX, rearSpeedY;
+	//	const static uint8_t bmsCurrentX, bmsCurrentY;
+	//	const static uint8_t bmsVoltageX, bmsVoltageY;
+	//	const static uint8_t bmsTemperatureX, bmsTemperatureY;
+	//
+	//	setAllWhite();
+	//
+	//	// Rear Wheel Speed
+	//	itoa(realspeed,c,10);
+	//	drawString(DISP_BLACK, 100,100,5,10,c,10);
+	//	c[0] = 'K';
+	//	c[1] = 'M';
+	//	c[2] = '/';
+	//	c[3] = 'H';
+	//	c[4] = '\0';
+	//	drawString(DISP_BLACK, 150,122,3,5,c,4);
+	//
+	//	// BMS Current Draw
+	//
+	//	// BMS Voltage
+	//
+	//	// BMS Temperature - TO DO Warning Indicator
+	//
+	//	// Battery Percentage/State of Charge
+	//	int percentLoc = batteryImage(15, 225, 60, 4, 2, uint8_t(displayBMS.bat_percentage));
+	//	batteryLife += 1;
+	//	if (batteryLife > 100)
+	//		batteryLife = 0;
+	//
+	//	// Real Time Clock - Current Time
+	//
+	//
 
 	// Screensaver Image
 	screenSaverImage();
@@ -1094,6 +1128,151 @@ uint8_t checkDMA_TCBusy(){
 	return (uint8_t)HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
 }
 //End of DMA SPI functions
+
+//Functions related to controlling the Adafruit 1.2" Seven Segment
+void begin_7seg() {
+	HAL_I2C_Master_Transmit(&hi2c1,i2c_addr_7seg,&i2c_cmd_oscOn, 1, i2c_timeout);
+	blinkRate_7seg(HT16K33_BLINK_OFF);
+
+	setBrightness_7seg(15); // max brightness
+}
+void blinkRate_7seg(uint8_t b) {
+	if (b > 3)
+		b = 0; // turn off if not sure
+
+	uint8_t txMsg = HT16K33_BLINK_CMD | HT16K33_BLINK_DISPLAYON | (b << 1);
+	HAL_I2C_Master_Transmit(&hi2c1,i2c_addr_7seg,&txMsg, 1, i2c_timeout);
+}
+void setBrightness_7seg(uint8_t b) {
+	if (b > 15)
+		b = 15;
+	uint8_t txMsg = HT16K33_CMD_BRIGHTNESS | b;
+	HAL_I2C_Master_Transmit(&hi2c1,i2c_addr_7seg,&txMsg, 1, i2c_timeout);
+}
+
+// print_7seg
+void print_7seg(double n)
+{
+	int digits = 2;
+	printFloat_7seg(n, digits, DEC);
+}
+void printNumber_7seg(long n, uint8_t base)
+{
+	printFloat_7seg(n, 0, base);
+}
+void printFloat_7seg(double n, uint8_t fracDigits, uint8_t base)
+{
+	uint8_t numericDigits = 4;   // available digits on display
+	uint8_t isNegative = false;  // true if the number is negative
+
+	// is the number negative?
+	if(n < 0) {
+		isNegative = true;  // need to draw sign later
+		--numericDigits;    // the sign will take up one digit
+		n *= -1;            // pretend the number is positive
+	}
+
+	// calculate the factor required to shift all fractional digits
+	// into the integer part of the number
+	double toIntFactor = 1.0;
+	for(int i = 0; i < fracDigits; ++i) toIntFactor *= base;
+
+	// create integer containing digits to display by applying
+	// shifting factor and rounding adjustment
+	uint32_t displayNumber = n * toIntFactor + 0.5;
+
+	// calculate upper bound on displayNumber given
+	// available digits on display
+	uint32_t tooBig = 1;
+	for(int i = 0; i < numericDigits; ++i) tooBig *= base;
+
+	// if displayNumber is too large, try fewer fractional digits
+	while(displayNumber >= tooBig) {
+		--fracDigits;
+		toIntFactor /= base;
+		displayNumber = n * toIntFactor + 0.5;
+	}
+
+	// did toIntFactor shift the decimal off the display?
+	if (toIntFactor < 1) {
+		printError_7seg();
+	} else {
+		// otherwise, display the number
+		int8_t displayPos = 4;
+
+		if (displayNumber)  //if displayNumber is not 0
+		{
+			for(uint8_t i = 0; displayNumber || i <= fracDigits; ++i) {
+				uint8_t displayDecimal = (fracDigits != 0 && i == fracDigits);
+				writeDigitNum_7seg(displayPos--, displayNumber % base, displayDecimal);
+				if(displayPos == 2) writeDigitRaw_7seg(displayPos--, 0x00);
+				displayNumber /= base;
+			}
+		}
+		else {
+			writeDigitNum_7seg(displayPos--, 0, false);
+		}
+
+		// display negative sign if negative
+		if(isNegative) writeDigitRaw_7seg(displayPos--, 0x40);
+
+		// clear remaining display positions
+		while(displayPos >= 0) writeDigitRaw_7seg(displayPos--, 0x00);
+	}
+}
+void writeDigitRaw_7seg(uint8_t d, uint8_t bitmask) {
+	if (d > 4) return;
+	displaybuffer_7seg[d] = bitmask;
+}
+void writeDigitNum_7seg(uint8_t d, uint8_t num, uint8_t dot) {
+	if (d > 4)
+		return;
+
+	writeDigitRaw_7seg(d, numbertable[num] | (dot << 7));
+}
+size_t write_7seg(uint8_t c) {
+
+	uint8_t r = 0;
+
+	if (c == '\n') position_7seg = 0;
+	if (c == '\r') position_7seg = 0;
+
+	if ((c >= '0') && (c <= '9')) {
+		writeDigitNum_7seg(position_7seg, c-'0', false);
+		r = 1;
+	}
+
+	position_7seg++;
+	if (position_7seg == 2) position_7seg++;
+
+	return r;
+}
+void writeDisplay_7seg(void) {
+
+	// start at address $00
+	uint8_t txMsg[17];
+	txMsg[0] = 0x00;
+
+
+	for (uint8_t i=0; i<8; i++) {
+		txMsg[1+2*i] = displaybuffer_7seg[i] & 0xFF;
+		txMsg[1+2*i+1] = displaybuffer_7seg[i] >> 8;
+	}
+	HAL_I2C_Master_Transmit(&hi2c1, i2c_addr_7seg, txMsg, 17, i2c_timeout);
+}
+void printError_7seg(void) {
+  for(uint8_t i = 0; i < SEVENSEG_DIGITS; ++i) {
+    writeDigitRaw_7seg(i, (i == 2 ? 0x00 : 0x40));
+  }
+}
+void test_7seg() {
+	begin_7seg();
+	print_7seg(12.34);
+	writeDisplay_7seg();
+	return;
+}
+
+// Other stuff
 int getTim1Prescaler(){
 	return HAL_RCC_GetPCLK2Freq() / 5000; //since it is multiplied by 2
 }
@@ -1143,7 +1322,7 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
 		ID = theHcan->pRxMsg->ExtId;
 	else
 		ID = theHcan->pRxMsg->StdId;
-		printf("Message Received and Acknowledged from ID %x\n\r", ID);
+	printf("Message Received and Acknowledged from ID %x\n\r", ID);
 #endif
 
 	if (theHcan->pRxMsg->IDE == CAN_ID_STD) {
@@ -1154,7 +1333,6 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
 		Error_Handler();
 	}
 }
-
 void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
 	static const float _Current_Factor = 0.05;
 	static const float _Voltage_Factor = 0.05;
@@ -1202,34 +1380,34 @@ void __io_putchar(uint8_t ch) {
 static void MX_TIM1_Init(void)
 {
 
-  TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_MasterConfigTypeDef sMasterConfig;
+	TIM_ClockConfigTypeDef sClockSourceConfig;
+	TIM_MasterConfigTypeDef sMasterConfig;
 
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = getTim1Prescaler();
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 10000;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	htim1.Instance = TIM1;
+	htim1.Init.Prescaler = getTim1Prescaler();
+	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim1.Init.Period = 10000;
+	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	htim1.Init.RepetitionCounter = 0;
+	htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+	if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+	sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
 }
 static void MX_CAN_Init(void)
@@ -1273,13 +1451,13 @@ static void MX_CAN_Init(void)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @param  None
+ * @retval None
+ */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler */
+	/* USER CODE BEGIN Error_Handler */
 	/* User can add his own implementation to report the HAL error return state */
 	printf("Error Handler\n\r");
 	HAL_StatusTypeDef status;
@@ -1295,35 +1473,35 @@ void Error_Handler(void)
 		status = HAL_CAN_Transmit_IT(&hcan);
 #endif
 	} while (status != HAL_OK);
-  /* USER CODE END Error_Handler */ 
+	/* USER CODE END Error_Handler */
 }
 
 #ifdef USE_FULL_ASSERT
 
 /**
-   * @brief Reports the name of the source file and the source line number
-   * where the assert_param error has occurred.
-   * @param file: pointer to the source file name
-   * @param line: assert_param error line source number
-   * @retval None
-   */
+ * @brief Reports the name of the source file and the source line number
+ * where the assert_param error has occurred.
+ * @param file: pointer to the source file name
+ * @param line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t* file, uint32_t line)
 {
-  /* USER CODE BEGIN 6 */
+	/* USER CODE BEGIN 6 */
 	/* User can add his own implementation to report the file name and line number,
     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
+	/* USER CODE END 6 */
 
 }
 
 #endif
 
 /**
-  * @}
-  */ 
+ * @}
+ */
 
 /**
-  * @}
-*/ 
+ * @}
+ */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

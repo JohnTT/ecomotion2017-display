@@ -120,4 +120,49 @@ void dmaImageBufferSection();
 uint8_t checkDMA_TCBusy();
 int readDMAResponse();
 void updateBufferDMA();
+
+//Adafruit 7-segment defines
+#define HT16K33_BLINK_CMD 0x80
+#define HT16K33_BLINK_DISPLAYON 0x01
+#define HT16K33_BLINK_OFF 0
+#define HT16K33_BLINK_2HZ  1
+#define HT16K33_BLINK_1HZ  2
+#define HT16K33_BLINK_HALFHZ  3
+
+#define HT16K33_CMD_BRIGHTNESS 0xE0
+
+#define SEVENSEG_DIGITS 5
+
+#define DEC 10
+#define HEX 16
+#define OCT 8
+#define BIN 2
+#define BYTE 0
+
+//Adafruit 7-segment function prototypes
+void begin_7seg();
+void blinkRate_7seg(uint8_t b);
+void setBrightness_7seg(uint8_t b);
+
+//print_7seg overload
+void print_7seg(double n);
+void printNumber_7seg(long n, uint8_t base);
+void printFloat_7seg(double n, uint8_t fracDigits, uint8_t base);
+void writeDigitRaw_7seg(uint8_t d, uint8_t bitmask);
+void writeDigitNum_7seg(uint8_t d, uint8_t num, uint8_t dot);
+size_t write_7seg(uint8_t c);
+void writeDisplay_7seg(void);
+void printError_7seg(void);
+void test_7seg();
+
+typedef enum {
+	false = 0,
+	true
+} bool;
+
+
+
+
+
+
 #endif /* DISPLAY_H_ */
