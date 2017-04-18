@@ -12,14 +12,14 @@
 
 #ifdef _CAR
 
-#define _ERRORHANDLER_CAN1TRANSMIT
-#define _REBROADCAST_ALLCELL
+#define _ERRORHANDLER_CAN1TRANSMIT 1
+#define _REBROADCAST_ALLCELL 1
 
 #endif
 
 #ifndef _CAR
 
-#define _DEBUG_ON 1
+//#define _DEBUG_ON 1
 
 #ifdef _DEBUG_ON
 #define _CAN_PRINTF 1
@@ -120,6 +120,7 @@ void dmaImageBufferSection();
 uint8_t checkDMA_TCBusy();
 int readDMAResponse();
 void updateBufferDMA();
+void printUART2();
 
 //Adafruit 7-segment defines
 #define HT16K33_BLINK_CMD 0x80

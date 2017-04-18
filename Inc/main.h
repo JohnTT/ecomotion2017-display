@@ -57,7 +57,11 @@
 #define TCK_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
-
+#define LED0_Pin GPIO_PIN_0
+#define LED1_Pin GPIO_PIN_1
+#define LED2_Pin GPIO_PIN_2
+#define LED3_Pin GPIO_PIN_3
+#define LEDx_GPIO_Port GPIOC
 /* USER CODE END Private defines */
 
 /**

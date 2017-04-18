@@ -164,30 +164,45 @@ int main(void)
 	SystemClock_Config();
 
 	/* Initialize all configured peripherals */
+
+
+	/* USER CODE BEGIN 2 */
+#ifdef _DEBUG_ON
 	MX_GPIO_Init();
 	//MX_DMA_Init();
 	MX_USART2_UART_Init();
 	MX_ADC1_Init();
-	//MX_CAN_Init();
+	MX_CAN_Init();
 	//MX_SPI1_Init();
 	//MX_TIM1_Init();
 	MX_I2C1_Init();
+#else
+	MX_GPIO_Init();
+	MX_DMA_Init();
+	MX_USART2_UART_Init();
+	MX_ADC1_Init();
+	MX_CAN_Init();
+	MX_SPI1_Init();
+	MX_TIM1_Init();
+	MX_I2C1_Init();
 
-	/* USER CODE BEGIN 2 */
-	//HAL_TIM_Base_Start_IT(&htim1); //start the base for update interrupts
+	HAL_TIM_Base_Start_IT(&htim1); //start the base for update interrupts
+	flag = 0;
+	updateBufferDMA();
+#endif
+
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
-	flag = 0;
-	updateBufferDMA();
+
 	while (1)
 	{
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
 
-		//flag = 0;
+		flag = 0;
 		//		counter += 11;
 		//		counter %= 100;
 		//      must find a way to make waitTCBusy without polling, somehow read a GPIO port with interrupts
@@ -196,8 +211,15 @@ int main(void)
 		//      and try again in a bit.
 		//      Need to add a timer with interrupt call checks
 		//
-		printf("MAIN LOOP\n\r");
-		test_7seg();
+		printf("MAIN LOOP DISPLAY\n\r");
+		printUART2();
+//		HAL_GPIO_WritePin(LEDx_GPIO_Port, LED3_Pin, GPIO_PIN_SET);
+//		for (int i = 0; i < 1000; i++) {}
+//		HAL_GPIO_WritePin(LEDx_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
+		//test_7seg();
+
+
+
 
 		HAL_Delay(1000);
 	}
@@ -439,7 +461,7 @@ static void MX_USART2_UART_Init(void)
 {
 
 	huart2.Instance = USART2;
-	huart2.Init.BaudRate = 9600;
+	huart2.Init.BaudRate = 38400;
 	huart2.Init.WordLength = UART_WORDLENGTH_8B;
 	huart2.Init.StopBits = UART_STOPBITS_1;
 	huart2.Init.Parity = UART_PARITY_NONE;
@@ -480,40 +502,7 @@ static void MX_DMA_Init(void)
  * EVENT_OUT
  * EXTI
  */
-static void MX_GPIO_Init(void)
-{
 
-	GPIO_InitTypeDef GPIO_InitStruct;
-
-	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOC_CLK_ENABLE();
-	__HAL_RCC_GPIOF_CLK_ENABLE();
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-	__HAL_RCC_GPIOB_CLK_ENABLE();
-
-	/*Configure GPIO pin Output Level */
-	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
-
-	/*Configure GPIO pin : B1_Pin */
-	GPIO_InitStruct.Pin = B1_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
-	/*Configure GPIO pin : SPI1_CSn_Pin */
-	GPIO_InitStruct.Pin = SPI1_CSn_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(SPI1_CSn_GPIO_Port, &GPIO_InitStruct);
-
-	/*Configure GPIO pin : TC_Busyn_Pin */
-	GPIO_InitStruct.Pin = TC_Busyn_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(TC_Busyn_GPIO_Port, &GPIO_InitStruct);
-
-}
 
 /* USER CODE BEGIN 4 */
 static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleTypeDef* theHcan) {
@@ -1261,9 +1250,9 @@ void writeDisplay_7seg(void) {
 	HAL_I2C_Master_Transmit(&hi2c1, i2c_addr_7seg, txMsg, 17, i2c_timeout);
 }
 void printError_7seg(void) {
-  for(uint8_t i = 0; i < SEVENSEG_DIGITS; ++i) {
-    writeDigitRaw_7seg(i, (i == 2 ? 0x00 : 0x40));
-  }
+	for(uint8_t i = 0; i < SEVENSEG_DIGITS; ++i) {
+		writeDigitRaw_7seg(i, (i == 2 ? 0x00 : 0x40));
+	}
 }
 void test_7seg() {
 	begin_7seg();
@@ -1316,6 +1305,7 @@ void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* theHcan) {
 }
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
 
+	HAL_GPIO_WritePin(LEDx_GPIO_Port, LED0_Pin, GPIO_PIN_SET);
 #ifdef _CAN_PRINTF
 	uint32_t ID;
 	if (theHcan->pRxMsg->IDE == CAN_ID_EXT)
@@ -1325,13 +1315,17 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
 	printf("Message Received and Acknowledged from ID %x\n\r", ID);
 #endif
 
+
 	if (theHcan->pRxMsg->IDE == CAN_ID_STD) {
 		parseCANMessage(theHcan->pRxMsg);
 	}
 
+
+	HAL_GPIO_WritePin(LEDx_GPIO_Port, LED0_Pin, GPIO_PIN_RESET);
 	if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
 		Error_Handler();
 	}
+
 }
 void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
 	static const float _Current_Factor = 0.05;
@@ -1356,7 +1350,7 @@ void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
 		memcpy(&bmsBuf, pRxMsg->Data, sizeof(bmsBuf));
 		displayBMS.current = bmsBuf.current *_Current_Factor - _Current_Offset;
 		displayBMS.voltage = bmsBuf.voltage *_Voltage_Factor;
-		displayBMS.temperature = bmsBuf.temperature;
+		displayBMS.temperature = bmsBuf.temperature - _Temp_Offset;
 		displayBMS.bat_percentage = bmsBuf.bat_percentage * _SOC_Factor;
 		break;
 	case ecoMotion_MasterRTC:
@@ -1377,6 +1371,24 @@ void __io_putchar(uint8_t ch) {
 	HAL_UART_Transmit(&huart2, &ch, 1, 1);
 }
 #endif
+void printUART2() {
+	// Bat State - Need to be started
+	printf("Current: %f [Amps]\n\r", displayBMS.current);
+	printf("Voltage: %f [Volts]\n\r", displayBMS.voltage);
+	printf("Temperature: %u [deg C]\n\r", displayBMS.temperature);
+	printf("Battery: %f [%%]\n\r", displayBMS.bat_percentage);
+
+
+	printf("RTC MESSAGE ---------------\n\r");
+	printf("Year: %u\n\r", displayRTC.Year+1985);
+	printf("Month: %u\n\r", displayRTC.Month);
+	printf("Day: %u\n\r", displayRTC.Day);
+	printf("Hour: %u\n\r", displayRTC.Hour);
+	printf("Minute: %u\n\r", displayRTC.Minute);
+	printf("Second: %u\n\r", displayRTC.Second);
+	printf("\n\r");
+
+}
 static void MX_TIM1_Init(void)
 {
 
@@ -1448,6 +1460,49 @@ static void MX_CAN_Init(void)
 		Error_Handler();
 	}
 }
+
+static void MX_GPIO_Init(void)
+{
+
+	GPIO_InitTypeDef GPIO_InitStruct;
+
+	/* GPIO Ports Clock Enable */
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_GPIOF_CLK_ENABLE();
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+
+	/*Configure GPIO pin Output Level */
+	HAL_GPIO_WritePin(SPI1_CSn_GPIO_Port, SPI1_CSn_Pin, GPIO_PIN_RESET);
+
+	/*Configure GPIO pin : B1_Pin */
+	GPIO_InitStruct.Pin = B1_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+	/*Configure GPIO pin : SPI1_CSn_Pin */
+	GPIO_InitStruct.Pin = SPI1_CSn_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(SPI1_CSn_GPIO_Port, &GPIO_InitStruct);
+
+	/*Configure GPIO pin : TC_Busyn_Pin */
+	GPIO_InitStruct.Pin = TC_Busyn_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(TC_Busyn_GPIO_Port, &GPIO_InitStruct);
+
+
+	//Error Handler LEDs
+	GPIO_InitStruct.Pin = LED0_Pin | LED1_Pin | LED2_Pin | LED3_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(LEDx_GPIO_Port, &GPIO_InitStruct);
+}
+
 /* USER CODE END 4 */
 
 /**
@@ -1472,6 +1527,11 @@ void Error_Handler(void)
 #ifdef _ERRORHANDLER_CAN1TRANSMIT
 		status = HAL_CAN_Transmit_IT(&hcan);
 #endif
+		HAL_GPIO_WritePin(LEDx_GPIO_Port, LED3_Pin, GPIO_PIN_SET);
+		for (int i = 0; i < 1000; i++) {}
+		HAL_GPIO_WritePin(LEDx_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
+
+		HAL_Delay(100);
 	} while (status != HAL_OK);
 	/* USER CODE END Error_Handler */
 }
