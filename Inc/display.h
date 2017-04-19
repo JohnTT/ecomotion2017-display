@@ -19,7 +19,7 @@
 
 #ifndef _CAR
 
-//#define _DEBUG_ON 1
+#define _DEBUG_ON 1
 
 #ifdef _DEBUG_ON
 #define _CAN_PRINTF 1

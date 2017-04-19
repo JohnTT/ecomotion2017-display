@@ -89,7 +89,7 @@ uint8_t txResponse[2] = {0x00, 0x00};
 //End of New DMA variables
 
 //Adafruit 7-seg variables
-uint8_t i2c_addr_7seg = 0x70;
+uint8_t i2c_addr_7seg = 0x70 << 1;
 uint16_t displaybuffer_7seg[8];
 uint8_t position_7seg = 0;
 static const uint8_t numbertable[] = {
@@ -116,7 +116,7 @@ const uint16_t i2c_timeout = 1000;
 //cmds
 uint8_t i2c_cmd_oscOn = 0x21;
 
-
+int counter = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -172,7 +172,7 @@ int main(void)
 	//MX_DMA_Init();
 	MX_USART2_UART_Init();
 	MX_ADC1_Init();
-	MX_CAN_Init();
+//	MX_CAN_Init();
 	//MX_SPI1_Init();
 	//MX_TIM1_Init();
 	MX_I2C1_Init();
@@ -202,7 +202,7 @@ int main(void)
 
 		/* USER CODE BEGIN 3 */
 
-		flag = 0;
+//		flag = 0;
 		//		counter += 11;
 		//		counter %= 100;
 		//      must find a way to make waitTCBusy without polling, somehow read a GPIO port with interrupts
@@ -212,16 +212,16 @@ int main(void)
 		//      Need to add a timer with interrupt call checks
 		//
 		printf("MAIN LOOP DISPLAY\n\r");
-		printUART2();
+//		printUART2();
 //		HAL_GPIO_WritePin(LEDx_GPIO_Port, LED3_Pin, GPIO_PIN_SET);
 //		for (int i = 0; i < 1000; i++) {}
 //		HAL_GPIO_WritePin(LEDx_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
-		//test_7seg();
 
 
 
-
-		HAL_Delay(1000);
+		counter++;
+		test_7seg();
+		HAL_Delay(100);
 	}
 	/* USER CODE END 3 */
 
@@ -1120,10 +1120,13 @@ uint8_t checkDMA_TCBusy(){
 
 //Functions related to controlling the Adafruit 1.2" Seven Segment
 void begin_7seg() {
-	HAL_I2C_Master_Transmit(&hi2c1,i2c_addr_7seg,&i2c_cmd_oscOn, 1, i2c_timeout);
+	if (HAL_I2C_Master_Transmit(&hi2c1, i2c_addr_7seg, &i2c_cmd_oscOn, 1, i2c_timeout) == HAL_OK)
+		printf("We good\n\r");
+	else
+		printf("We no good\n\r");
 	blinkRate_7seg(HT16K33_BLINK_OFF);
 
-	setBrightness_7seg(15); // max brightness
+	setBrightness_7seg(5); // max brightness is 15
 }
 void blinkRate_7seg(uint8_t b) {
 	if (b > 3)
@@ -1256,7 +1259,7 @@ void printError_7seg(void) {
 }
 void test_7seg() {
 	begin_7seg();
-	print_7seg(12.34);
+	print_7seg(2.0);
 	writeDisplay_7seg();
 	return;
 }
