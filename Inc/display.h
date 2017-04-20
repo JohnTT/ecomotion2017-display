@@ -43,6 +43,7 @@ typedef enum DMA_sections_t {
 	UPDATE_BUFFER
 } DMA_sections;
 
+
 typedef enum {
 	ecoMotion_MotorControl = 0x01,
 	ecoMotion_Speed = 0x02,
@@ -161,7 +162,13 @@ typedef enum {
 	true
 } bool;
 
-
+//temperature stuff
+HAL_StatusTypeDef readTempSensor();
+HAL_StatusTypeDef changeAddress(); //Only works for the TC74A5 sensors
+HAL_StatusTypeDef setToStandby();
+HAL_StatusTypeDef setToActive();
+HAL_StatusTypeDef updateState();
+void testTemp();
 
 
 

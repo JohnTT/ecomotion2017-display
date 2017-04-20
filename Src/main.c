@@ -113,8 +113,21 @@ static const uint8_t numbertable[] = {
 
 const uint16_t i2c_timeout = 1000;
 
-//cmds
+//cmds for adafruit
 uint8_t i2c_cmd_oscOn = 0x21;
+
+//temp sensor cmds and variables
+uint8_t i2c_cmd_read_temp = 0x00;
+uint8_t i2c_cmd_state = 0x01;
+uint8_t temp_standby = 0x80;
+uint8_t temp_active = 0x00;
+int8_t temp[1] = {0x7F}; //max positive temp for start
+uint8_t config[1] = {0x00}; //holds the value of the config register in the temperature sensor (7b = standby switch r/w, 6b = data ready r)
+bool temp_data_ready = false; //holds whether or not the temp data is ready (0 = not ready, 1 = ready)
+uint8_t i2c_temp_addrs = 0b10010000; //temperature address, can be changed, already shifted left 0b1001101
+
+//end of temp sensor cmds and variables
+
 
 int counter = 0;
 /* USER CODE END PV */
@@ -195,7 +208,7 @@ int main(void)
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
-
+	setToActive();
 	while (1)
 	{
 		/* USER CODE END WHILE */
@@ -216,12 +229,11 @@ int main(void)
 //		HAL_GPIO_WritePin(LEDx_GPIO_Port, LED3_Pin, GPIO_PIN_SET);
 //		for (int i = 0; i < 1000; i++) {}
 //		HAL_GPIO_WritePin(LEDx_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
+		testTemp();
 
-
-
-		counter++;
-		test_7seg();
-		HAL_Delay(100);
+//		counter++;
+//		test_7seg();
+		HAL_Delay(1000);
 	}
 	/* USER CODE END 3 */
 
@@ -1259,11 +1271,76 @@ void printError_7seg(void) {
 }
 void test_7seg() {
 	begin_7seg();
-	print_7seg(2.0);
+	print_7seg(counter);
 	writeDisplay_7seg();
 	return;
 }
 
+//Functions related to reading the temperature sensor
+HAL_StatusTypeDef readTempSensor(){
+	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(&hi2c1, i2c_temp_addrs, &i2c_cmd_read_temp, 1, i2c_timeout);
+	if (status != HAL_OK){
+		printf("We no good");
+		return status;
+	}
+	else
+		printf("We good");
+	status = HAL_I2C_Master_Receive(&hi2c1, i2c_temp_addrs, temp, 1, i2c_timeout);
+	if (status != HAL_OK)
+		printf("We no good");
+	else
+		printf("We good");
+	return status;
+}
+HAL_StatusTypeDef changeAddress(){ //Only works for the TC74A5 sensors
+	//do stuff here
+	return HAL_OK;
+}
+HAL_StatusTypeDef setToStandby(){
+	uint8_t data[2] = {i2c_cmd_state, temp_standby};
+	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(&hi2c1, i2c_temp_addrs, data, 2, i2c_timeout);
+	if (status == HAL_OK)
+		printf("we good\n\r");
+	else
+		printf("we no good\n\r");
+	return status;
+}
+HAL_StatusTypeDef setToActive(){
+	uint8_t data[2] = {i2c_cmd_state, temp_active};
+	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(&hi2c1, i2c_temp_addrs, data, 2, i2c_timeout);
+	if (status == HAL_OK)
+		printf("we good\n\r");
+	else
+		printf("we no good\n\r");
+	return status;
+}
+HAL_StatusTypeDef updateState(){
+	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(&hi2c1, i2c_temp_addrs, &i2c_cmd_state, 1, i2c_timeout);
+	if (status != HAL_OK){
+			printf("We no good");
+	}
+		else
+			printf("We good");
+	status = HAL_I2C_Master_Receive(&hi2c1, i2c_temp_addrs, config, 1, i2c_timeout);
+	if (status != HAL_OK)
+			printf("We no good");
+		else
+			printf("We good");
+	if (config[0] == 0x40)
+		temp_data_ready = true;
+	else
+		temp_data_ready = false;
+	return status;
+}
+void testTemp(){
+	updateState();
+    if (temp_data_ready == true){
+    	if (readTempSensor() == HAL_OK){
+    		printf("The temperature value is %i", temp[0]);
+    	}
+
+    }
+}
 // Other stuff
 int getTim1Prescaler(){
 	return HAL_RCC_GetPCLK2Freq() / 5000; //since it is multiplied by 2
