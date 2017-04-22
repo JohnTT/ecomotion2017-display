@@ -20,8 +20,6 @@ Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_spi.o: \
  /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_dma.h \
  /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_dma_ex.h \
  /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_cortex.h \
- /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_adc.h \
- /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_adc_ex.h \
  /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_can.h \
  /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_flash.h \
  /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_flash_ex.h \
@@ -75,10 +73,6 @@ Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_spi.o: \
 /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_dma_ex.h:
 
 /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_cortex.h:
-
-/Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_adc.h:
-
-/Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_adc_ex.h:
 
 /Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_can.h:
 

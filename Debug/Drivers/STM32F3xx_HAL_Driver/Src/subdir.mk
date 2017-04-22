@@ -5,8 +5,6 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.c \
-../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc.c \
-../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc_ex.c \
 ../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_can.c \
 ../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.c \
 ../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_dma.c \
@@ -28,8 +26,6 @@ C_SRCS += \
 
 OBJS += \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.o \
-./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc.o \
-./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc_ex.o \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_can.o \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.o \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_dma.o \
@@ -51,8 +47,6 @@ OBJS += \
 
 C_DEPS += \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.d \
-./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc.d \
-./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc_ex.d \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_can.d \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.d \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_dma.d \
