@@ -70,7 +70,6 @@ uint8_t UploadImageData[3] = {0x20, 0x01, 0x00};
 uint8_t ResetDataPointer[3] = {0x20, 0x0D, 0x00};
 int value = 0;
 int realspeed = 0; // Real Wheel speed
-int flag = 0;
 char strConvert[100];
 int batteryLife;
 //New DMA variables
@@ -116,6 +115,7 @@ const uint16_t i2c_timeout = 1000;
 //cmds for adafruit
 uint8_t i2c_cmd_oscOn = 0x21;
 
+
 //temp sensor cmds and variables
 uint8_t i2c_cmd_read_temp = 0x00;
 uint8_t i2c_cmd_state = 0x01;
@@ -125,11 +125,10 @@ int8_t temp[1] = {0x7F}; //max positive temp for start
 uint8_t config[1] = {0x00}; //holds the value of the config register in the temperature sensor (7b = standby switch r/w, 6b = data ready r)
 bool temp_data_ready = false; //holds whether or not the temp data is ready (0 = not ready, 1 = ready)
 uint8_t i2c_temp_addrs = 0b10010000; //temperature address, can be changed, already shifted left 0b1001101
-
 //end of temp sensor cmds and variables
 
-
-int counter = 0;
+//begin of user button variables
+uint8_t brightness = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -158,17 +157,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	//int counter = 89;
-	batteryLife = 90;
-	img_buf[0] = 0x33;
-	img_buf[1] = 0x01;
-	img_buf[2] = 0x90;
-	img_buf[3] = 0x01;
-	img_buf[4] = 0x2C;
-	img_buf[5] = 0x01;
-	for (int i=6; i<16; i++)
-		img_buf[i] = 0x00;
-	hasResetDataPointer = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -179,16 +167,6 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_USART2_UART_Init();
-  MX_CAN_Init();
-  MX_SPI1_Init();
-  MX_TIM1_Init();
-  MX_I2C1_Init();
-  MX_TIM2_Init();
-
   /* USER CODE BEGIN 2 */
 #ifdef _DEBUG_ON
 	MX_GPIO_Init();
@@ -198,19 +176,24 @@ int main(void)
 //	MX_SPI1_Init();
 	MX_TIM1_Init(); //for the 12V LEDs
 //	MX_I2C1_Init();
+//	MX_SPI1_Init();
 	MX_TIM2_Init(); //for the DMA calls
 #else
 	MX_GPIO_Init();
-	MX_DMA_Init();
-	MX_USART2_UART_Init();
-	MX_ADC1_Init();
-	MX_CAN_Init();
-	MX_SPI1_Init();
-	MX_TIM1_Init();
-	MX_I2C1_Init();
+	MX_DMA_Init(); //For display without polling
+//	MX_USART2_UART_Init(); //For debugging
+	MX_CAN_Init(); //for Communication between MCUs
+	MX_SPI1_Init(); //for E-paper display
+	MX_I2C1_Init(); //for Seven Segment Display and sensors
+	MX_TIM1_Init(); //for PWM 12V LEDs
+	MX_TIM2_Init(); //for the DMA calls
 
-	HAL_TIM_Base_Start_IT(&htim1); //start the base for update interrupts
-	flag = 0;
+    displayStartUp(); //initializes display for e-paper
+	HAL_TIM_Base_Start_IT(&htim2); //start the base for update interrupts
+	HAL_TIM_PWM_Init(&htim1); //start the base for PWM LEDs
+	HAL_TIM_PWM_Start(&htim1); //start the PWM output pins
+	setToActive(); //initializes the temperature sensor
+
 	updateBufferDMA();
 #endif
 
@@ -218,30 +201,17 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-//	setToActive();
 	while (1)
 	{
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-
-
-//		flag = 0;
-		//		counter += 11;
-		//		counter %= 100;
-		//      must find a way to make waitTCBusy without polling, somehow read a GPIO port with interrupts
-		//      check the waitTCBusy in the interrupt callback, if it's ready, send the next package of data
-		//      using some function 'partitioning' if not, continue back to communicating to the LCD display
-		//      and try again in a bit.
-		//      Need to add a timer with interrupt call checks
-		//
 //		printf("MAIN LOOP DISPLAY\n\r");
 //		printUART2();
 //		HAL_GPIO_WritePin(LD__GPIO_Port, LD_3_Pin, GPIO_PIN_SET);
 //		for (int i = 0; i < 1000; i++) {}
 //		HAL_GPIO_WritePin(LD_3_GPIO_Port, LD_3_Pin, GPIO_PIN_RESET);
 //		testTemp();
-//		counter++;
 //		test_7seg();
 //		printf("Pin is %u\n\r", HAL_GPIO_ReadPin(PB_0_GPIO_Port, PB_0_Pin));
 //		HAL_Delay(1000);
@@ -313,29 +283,6 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
-/* CAN init function */
-static void MX_CAN_Init(void)
-{
-
-  hcan.Instance = CAN;
-  hcan.Init.Prescaler = 2;
-  hcan.Init.Mode = CAN_MODE_NORMAL;
-  hcan.Init.SJW = CAN_SJW_1TQ;
-  hcan.Init.BS1 = CAN_BS1_13TQ;
-  hcan.Init.BS2 = CAN_BS2_2TQ;
-  hcan.Init.TTCM = DISABLE;
-  hcan.Init.ABOM = DISABLE;
-  hcan.Init.AWUM = DISABLE;
-  hcan.Init.NART = DISABLE;
-  hcan.Init.RFLM = DISABLE;
-  hcan.Init.TXFP = DISABLE;
-  if (HAL_CAN_Init(&hcan) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-}
-
 /* I2C1 init function */
 static void MX_I2C1_Init(void)
 {
@@ -389,121 +336,6 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
   hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-}
-
-/* TIM1 init function */
-static void MX_TIM1_Init(void)
-{
-
-  TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_MasterConfigTypeDef sMasterConfig;
-  TIM_OC_InitTypeDef sConfigOC;
-  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
-
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 6400;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 60000;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 60000;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 100;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 0;
-  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-  sBreakDeadTimeConfig.BreakFilter = 0;
-  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
-  sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
-  sBreakDeadTimeConfig.Break2Filter = 0;
-  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  HAL_TIM_MspPostInit(&htim1);
-
-}
-
-/* TIM2 init function */
-static void MX_TIM2_Init(void)
-{
-
-  TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_MasterConfigTypeDef sMasterConfig;
-
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 500;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1000;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
@@ -606,71 +438,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleTypeDef* theHcan) {
-	uint8_t prescaleFactor = 0;
-	switch (periphClock) {
-	case 32:
-		theHcan->Init.BS1 = CAN_BS1_13TQ;
-		theHcan->Init.BS2 = CAN_BS2_2TQ;
-		prescaleFactor = 2;
-		break;
-	case 45:
-		theHcan->Init.BS1 = CAN_BS1_12TQ;
-		theHcan->Init.BS2 = CAN_BS2_2TQ;
-		prescaleFactor = 3;
-		break;
-	case 48:
-		theHcan->Init.BS1 = CAN_BS1_11TQ;
-		theHcan->Init.BS2 = CAN_BS2_4TQ;
-		prescaleFactor = 3;
-		break;
-	}
-	theHcan->Init.SJW = CAN_SJW_1TQ;
-	switch (bitRate) {
-	case 1000:
-		theHcan->Init.Prescaler = prescaleFactor * 1;
-		break;
-	case 500:
-		theHcan->Init.Prescaler = prescaleFactor * 2;
-		break;
-	case 250:
-		theHcan->Init.Prescaler = prescaleFactor * 4;
-		break;
-	case 125:
-		theHcan->Init.Prescaler = prescaleFactor * 8;
-		break;
-	case 100:
-		theHcan->Init.Prescaler = prescaleFactor * 10;
-		break;
-	case 83:
-		theHcan->Init.Prescaler = prescaleFactor * 12;
-		break;
-	case 50:
-		theHcan->Init.Prescaler = prescaleFactor * 20;
-		break;
-	case 20:
-		theHcan->Init.Prescaler = prescaleFactor * 50;
-		break;
-	case 10:
-		theHcan->Init.Prescaler = prescaleFactor * 100;
-		break;
-	}
-}
-int numPlaces (int n)
-{
-	if (n < 10) return 1;
-	if (n < 100) return 2;
-	if (n < 1000) return 3;
-	if (n < 10000) return 4;
-	if (n < 100000) return 5;
-	if (n < 1000000) return 6;
-	if (n < 10000000) return 7;
-	if (n < 100000000) return 8;
-	if (n < 1000000000) return 9;
-	/*      2147483647 is 2^31-1 - add more ifs as needed
-       and adjust this final return as well. */
-	return 10;
-}
+
+//int numPlaces (int n)
+//{
+//	if (n < 10) return 1;
+//	if (n < 100) return 2;
+//	if (n < 1000) return 3;
+//	if (n < 10000) return 4;
+//	if (n < 100000) return 5;
+//	if (n < 1000000) return 6;
+//	if (n < 10000000) return 7;
+//	if (n < 100000000) return 8;
+//	if (n < 1000000000) return 9;
+//	/*      2147483647 is 2^31-1 - add more ifs as needed
+//       and adjust this final return as well. */
+//	return 10;
+//}
+//Converts integers to strings
 char *itoa (int value, char *result, int base)
 {
 	// check that the base if valid
@@ -696,7 +480,7 @@ char *itoa (int value, char *result, int base)
 	return result;
 }
 
-//Begin of functions for drawing
+//Functions for drawing
 void setAllBlack()
 {
 	for (int i=header; i<file_size; i++)
@@ -1024,9 +808,54 @@ int drawString(dispColour colour, int x, int y, int pt, int sp, char s[], int s_
 	}
 	return st;
 }
-//End of functions for drawing
+int batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent){
+	char c[10];
+
+	int numDigs = 2;
+	if (percent >= 10) {
+		numDigs++;
+	}
+	if (percent >= 100) {
+		numDigs++;
+	}
+	int textLeft = size - (4 * fontSize * numDigs + fontSpacing * (numDigs - 1)) / 2;
+	int textTop = (size / 2) - (4 * fontSize);
+	float batDrawPercent = (((2*size)+(size/5)) * ((float)percent) / 100);
+	drawRectangle(DISP_BLACK, x-2, y-2, x+(2*size)+2, y+(size)+2);
+	drawRectangle(DISP_BLACK, x+(2*size)-2, y+(3*size/10)-2, x+(2*size)+(size/5)+2, y+(7*size/10)+2);
+	if (batDrawPercent <= 2*size) {
+		drawRectangle(DISP_WHITE, x+batDrawPercent, y, x+(2*size), y+(size));
+		drawRectangle(DISP_WHITE, x+(2*size), y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
+	}
+	else if (batDrawPercent < ((2*size)+(size/5) - 1))
+		drawRectangle(DISP_WHITE, x+batDrawPercent+2, y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
+
+	char m[4];
+	itoa(percent, m, 10);
+	if (percent < 10)
+		m[1] = '%';
+	else if (percent < 100)
+		m[2] = '%';
+	else
+		m[3] = '%';
+
+	drawString(DISP_INVERT, x+textLeft, y+textTop, fontSize, fontSpacing, m, 4);
+	return (2*size)+(size/5)+2;
+}
+
 
 //Functions related to uploading and checking the E-paper display using DMA-Interrupt mode
+void displayStartUp(){
+	img_buf[0] = 0x33;
+	img_buf[1] = 0x01;
+	img_buf[2] = 0x90;
+	img_buf[3] = 0x01;
+	img_buf[4] = 0x2C;
+	img_buf[5] = 0x01;
+	for (int i=6; i<16; i++)
+		img_buf[i] = 0x00;
+	hasResetDataPointer = 0;
+}
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi){
 	//printf("SPI has successfully sent and received");
 	isDMAFinished = 1; //dma is done
@@ -1043,13 +872,9 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi){
 	printf("SPI has encountered an error");
 }
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){//for counter update event (wrap back to 0)
-	//printf("Timer Update");
-	//printf("\n\r");
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if (isDMAFinished && checkDMA_TCBusy()){
 		dmaImageBufferSection();
-		//printf("Here?");
-		//printf("\n\r");
 	}
 }
 void resetDataPointerDMA(){
@@ -1219,9 +1044,9 @@ void dmaImageBufferSection(){
 uint8_t checkDMA_TCBusy(){
 	return (uint8_t)HAL_GPIO_ReadPin(TC_Busyn_GPIO_Port, TC_Busyn_Pin);
 }
-//End of DMA SPI functions
 
-//Begin of Functions related to controlling the Adafruit 1.2" Seven Segment
+
+//Functions related to controlling the Adafruit 1.2" Seven Segment
 void begin_7seg() {
 	if (HAL_I2C_Master_Transmit(&hi2c1, i2c_addr_7seg, &i2c_cmd_oscOn, 1, i2c_timeout) == HAL_OK)
 		printf("We good\n\r");
@@ -1360,11 +1185,10 @@ void printError_7seg(void) {
 }
 void test_7seg() {
 	begin_7seg();
-	print_7seg(counter);
+	print_7seg(12.34);
 	writeDisplay_7seg();
 	return;
 }
-//End of Functions related to controlling the Adafruit 1.2" Seven Segment
 
 //Functions related to reading the temperature sensor
 HAL_StatusTypeDef readTempSensor(){
@@ -1432,43 +1256,70 @@ void testTemp(){
     }
 }
 
-// Other stuff
-int getTim1Prescaler(){
-	return HAL_RCC_GetPCLK2Freq() / 500; //since it is multiplied by 2
+//user interface functions
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if (GPIO_Pin == PB_0_Pin){
+		HAL_GPIO_TogglePin(LD_0_GPIO_Port, LD_0_Pin);
+		changeBrightness();
+	}
+	else if (GPIO_Pin == PB_1_Pin){
+		HAL_GPIO_TogglePin(LD_1_GPIO_Port, LD_1_Pin);
+	}
+	else if (GPIO_Pin == PB_2_Pin){
+		HAL_GPIO_TogglePin(LD_2_GPIO_Port, LD_2_Pin);
+	}
 }
-int batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int percent){
-	char c[10];
+void changeBrightness(){
+	brightness = brightness + 3 > 15 ? brightness = 0 : (brightness + 3);
+}
+void moveUp(){
 
-	int numDigs = 2;
-	if (percent >= 10) {
-		numDigs++;
-	}
-	if (percent >= 100) {
-		numDigs++;
-	}
-	int textLeft = size - (4 * fontSize * numDigs + fontSpacing * (numDigs - 1)) / 2;
-	int textTop = (size / 2) - (4 * fontSize);
-	float batDrawPercent = (((2*size)+(size/5)) * ((float)percent) / 100);
-	drawRectangle(DISP_BLACK, x-2, y-2, x+(2*size)+2, y+(size)+2);
-	drawRectangle(DISP_BLACK, x+(2*size)-2, y+(3*size/10)-2, x+(2*size)+(size/5)+2, y+(7*size/10)+2);
-	if (batDrawPercent <= 2*size) {
-		drawRectangle(DISP_WHITE, x+batDrawPercent, y, x+(2*size), y+(size));
-		drawRectangle(DISP_WHITE, x+(2*size), y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
-	}
-	else if (batDrawPercent < ((2*size)+(size/5) - 1))
-		drawRectangle(DISP_WHITE, x+batDrawPercent+2, y+(3*size/10), x+(2*size)+(size/5), y+(7*size/10));
+}
+void moveDown(){
 
-	char m[4];
-	itoa(percent, m, 10);
-	if (percent < 10)
-		m[1] = '%';
-	else if (percent < 100)
-		m[2] = '%';
-	else
-		m[3] = '%';
+}
+void enter(){
 
-	drawString(DISP_INVERT, x+textLeft, y+textTop, fontSize, fontSpacing, m, 4);
-	return (2*size)+(size/5)+2;
+}
+
+//CAN functions
+static void MX_CAN_Init(void)
+{
+	__HAL_RCC_CAN1_CLK_ENABLE();
+	hcan.Instance = CAN;
+	hcan.Init.Mode = CAN_MODE_NORMAL;
+	setCANbitRate(500, 32, &hcan);
+	hcan.Init.TTCM = DISABLE;
+	hcan.Init.ABOM = DISABLE;
+	hcan.Init.AWUM = DISABLE;
+	hcan.Init.NART = DISABLE;
+	hcan.Init.RFLM = DISABLE;
+	hcan.Init.TXFP = DISABLE;
+	static CanTxMsgTypeDef TxMessage;
+	static CanRxMsgTypeDef RxMessage;
+	hcan.pTxMsg = &TxMessage;
+	hcan.pRxMsg = &RxMessage;
+	if (HAL_CAN_Init(&hcan) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	CAN_FilterConfTypeDef canFilterConfig;
+	canFilterConfig.FilterNumber = 0;
+	canFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	canFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	canFilterConfig.FilterIdHigh = 0x0000;
+	canFilterConfig.FilterIdLow = 0x0000;
+	canFilterConfig.FilterMaskIdHigh = 0x0000;
+	canFilterConfig.FilterMaskIdLow = 0x0000;
+	canFilterConfig.FilterFIFOAssignment = 0;
+	canFilterConfig.FilterActivation = ENABLE;
+	canFilterConfig.BankNumber = 14;
+	if(HAL_CAN_ConfigFilter(&hcan, &canFilterConfig) != HAL_OK) {
+		Error_Handler();
+	}
+	if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
+		Error_Handler();
+	}
 }
 void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* theHcan) {
 	printf("Message Transmitted and Acknowledged");
@@ -1535,17 +1386,58 @@ void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
 	// modifications to buffer will happen before we do the reDraw.
 	doReDraw = 1;
 }
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if (GPIO_Pin == PB_0_Pin){
-		HAL_GPIO_TogglePin(LD_0_GPIO_Port, LD_0_Pin);
+static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleTypeDef* theHcan) {
+	uint8_t prescaleFactor = 0;
+	switch (periphClock) {
+	case 32:
+		theHcan->Init.BS1 = CAN_BS1_13TQ;
+		theHcan->Init.BS2 = CAN_BS2_2TQ;
+		prescaleFactor = 2;
+		break;
+	case 45:
+		theHcan->Init.BS1 = CAN_BS1_12TQ;
+		theHcan->Init.BS2 = CAN_BS2_2TQ;
+		prescaleFactor = 3;
+		break;
+	case 48:
+		theHcan->Init.BS1 = CAN_BS1_11TQ;
+		theHcan->Init.BS2 = CAN_BS2_4TQ;
+		prescaleFactor = 3;
+		break;
 	}
-	else if (GPIO_Pin == PB_1_Pin){
-		HAL_GPIO_TogglePin(LD_1_GPIO_Port, LD_1_Pin);
-	}
-	else if (GPIO_Pin == PB_2_Pin){
-		HAL_GPIO_TogglePin(LD_2_GPIO_Port, LD_2_Pin);
+	theHcan->Init.SJW = CAN_SJW_1TQ;
+	switch (bitRate) {
+	case 1000:
+		theHcan->Init.Prescaler = prescaleFactor * 1;
+		break;
+	case 500:
+		theHcan->Init.Prescaler = prescaleFactor * 2;
+		break;
+	case 250:
+		theHcan->Init.Prescaler = prescaleFactor * 4;
+		break;
+	case 125:
+		theHcan->Init.Prescaler = prescaleFactor * 8;
+		break;
+	case 100:
+		theHcan->Init.Prescaler = prescaleFactor * 10;
+		break;
+	case 83:
+		theHcan->Init.Prescaler = prescaleFactor * 12;
+		break;
+	case 50:
+		theHcan->Init.Prescaler = prescaleFactor * 20;
+		break;
+	case 20:
+		theHcan->Init.Prescaler = prescaleFactor * 50;
+		break;
+	case 10:
+		theHcan->Init.Prescaler = prescaleFactor * 100;
+		break;
 	}
 }
+
+//Debugging
 #ifdef _DEBUG_ON
 void __io_putchar(uint8_t ch) {
 	HAL_UART_Transmit(&huart2, &ch, 1, 1);
@@ -1569,6 +1461,8 @@ void printUART2() {
 	printf("\n\r");
 
 }
+
+//For 12V LED displays
 static void MX_TIM1_Init(void)
 {
 
@@ -1649,45 +1543,8 @@ static void MX_TIM1_Init(void)
   HAL_TIM_MspPostInit(&htim1);
 
 }
-static void MX_CAN_Init(void)
-{
-	__HAL_RCC_CAN1_CLK_ENABLE();
-	hcan.Instance = CAN;
-	hcan.Init.Mode = CAN_MODE_NORMAL;
-	setCANbitRate(500, 32, &hcan);
-	hcan.Init.TTCM = DISABLE;
-	hcan.Init.ABOM = DISABLE;
-	hcan.Init.AWUM = DISABLE;
-	hcan.Init.NART = DISABLE;
-	hcan.Init.RFLM = DISABLE;
-	hcan.Init.TXFP = DISABLE;
-	static CanTxMsgTypeDef TxMessage;
-	static CanRxMsgTypeDef RxMessage;
-	hcan.pTxMsg = &TxMessage;
-	hcan.pRxMsg = &RxMessage;
-	if (HAL_CAN_Init(&hcan) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	CAN_FilterConfTypeDef canFilterConfig;
-	canFilterConfig.FilterNumber = 0;
-	canFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
-	canFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-	canFilterConfig.FilterIdHigh = 0x0000;
-	canFilterConfig.FilterIdLow = 0x0000;
-	canFilterConfig.FilterMaskIdHigh = 0x0000;
-	canFilterConfig.FilterMaskIdLow = 0x0000;
-	canFilterConfig.FilterFIFOAssignment = 0;
-	canFilterConfig.FilterActivation = ENABLE;
-	canFilterConfig.BankNumber = 14;
-	if(HAL_CAN_ConfigFilter(&hcan, &canFilterConfig) != HAL_OK) {
-		Error_Handler();
-	}
-	if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
-		Error_Handler();
-	}
-}
-/* TIM2 init function */
+
+//To measure speed
 static void MX_TIM2_Init(void)
 {
 
@@ -1718,6 +1575,9 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
 
+}
+int getTim1Prescaler(){
+	return HAL_RCC_GetPCLK2Freq() / 500; //since it is multiplied by 2
 }
 
 /* USER CODE END 4 */

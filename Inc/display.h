@@ -8,7 +8,7 @@
 #ifndef DISPLAY_H_
 #define DISPLAY_H_
 
-// #define _CAR 1
+// #define _CAR 1 //for running in the car
 
 #ifdef _CAR
 
