@@ -179,6 +179,15 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_USART2_UART_Init();
+  MX_CAN_Init();
+  MX_SPI1_Init();
+  MX_TIM1_Init();
+  MX_I2C1_Init();
+  MX_TIM2_Init();
 
   /* USER CODE BEGIN 2 */
 #ifdef _DEBUG_ON
@@ -187,9 +196,9 @@ int main(void)
 	MX_USART2_UART_Init();
 //	MX_CAN_Init();
 //	MX_SPI1_Init();
-	MX_TIM1_Init();
-	MX_I2C1_Init();
-	MX_TIM2_Init();
+	MX_TIM1_Init(); //for the 12V LEDs
+//	MX_I2C1_Init();
+	MX_TIM2_Init(); //for the DMA calls
 #else
 	MX_GPIO_Init();
 	MX_DMA_Init();
@@ -209,12 +218,13 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	setToActive();
+//	setToActive();
 	while (1)
 	{
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+
 
 //		flag = 0;
 		//		counter += 11;
@@ -225,16 +235,17 @@ int main(void)
 		//      and try again in a bit.
 		//      Need to add a timer with interrupt call checks
 		//
-		printf("MAIN LOOP DISPLAY\n\r");
+//		printf("MAIN LOOP DISPLAY\n\r");
 //		printUART2();
 //		HAL_GPIO_WritePin(LD__GPIO_Port, LD_3_Pin, GPIO_PIN_SET);
 //		for (int i = 0; i < 1000; i++) {}
 //		HAL_GPIO_WritePin(LD_3_GPIO_Port, LD_3_Pin, GPIO_PIN_RESET);
-		testTemp();
-
+//		testTemp();
 //		counter++;
 //		test_7seg();
-		HAL_Delay(1000);
+//		printf("Pin is %u\n\r", HAL_GPIO_ReadPin(PB_0_GPIO_Port, PB_0_Pin));
+//		HAL_Delay(1000);
+
 	}
   /* USER CODE END 3 */
 
@@ -279,7 +290,8 @@ void SystemClock_Config(void)
   }
 
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1
-                              |RCC_PERIPHCLK_TIM1|RCC_PERIPHCLK_TIM2;
+                              |RCC_PERIPHCLK_TIM1|RCC_PERIPHCLK_TIM15
+                              |RCC_PERIPHCLK_TIM2;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
   PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
@@ -302,6 +314,27 @@ void SystemClock_Config(void)
 }
 
 /* CAN init function */
+static void MX_CAN_Init(void)
+{
+
+  hcan.Instance = CAN;
+  hcan.Init.Prescaler = 2;
+  hcan.Init.Mode = CAN_MODE_NORMAL;
+  hcan.Init.SJW = CAN_SJW_1TQ;
+  hcan.Init.BS1 = CAN_BS1_13TQ;
+  hcan.Init.BS2 = CAN_BS2_2TQ;
+  hcan.Init.TTCM = DISABLE;
+  hcan.Init.ABOM = DISABLE;
+  hcan.Init.AWUM = DISABLE;
+  hcan.Init.NART = DISABLE;
+  hcan.Init.RFLM = DISABLE;
+  hcan.Init.TXFP = DISABLE;
+  if (HAL_CAN_Init(&hcan) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+}
 
 /* I2C1 init function */
 static void MX_I2C1_Init(void)
@@ -362,12 +395,127 @@ static void MX_SPI1_Init(void)
 
 }
 
+/* TIM1 init function */
+static void MX_TIM1_Init(void)
+{
+
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_OC_InitTypeDef sConfigOC;
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
+
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 6400;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 60000;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 60000;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 100;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.BreakFilter = 0;
+  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
+  sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
+  sBreakDeadTimeConfig.Break2Filter = 0;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/* TIM2 init function */
+static void MX_TIM2_Init(void)
+{
+
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
+
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 500;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 1000;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+}
+
 /* USART2 init function */
 static void MX_USART2_UART_Init(void)
 {
 
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 9600;
+  huart2.Init.BaudRate = 38400;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -441,7 +589,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PB_0_Pin PB_1_Pin PB_2_Pin */
   GPIO_InitStruct.Pin = PB_0_Pin|PB_1_Pin|PB_2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -450,6 +598,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(TC_Busyn_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
@@ -543,6 +695,8 @@ char *itoa (int value, char *result, int base)
 	}
 	return result;
 }
+
+//Begin of functions for drawing
 void setAllBlack()
 {
 	for (int i=header; i<file_size; i++)
@@ -870,7 +1024,7 @@ int drawString(dispColour colour, int x, int y, int pt, int sp, char s[], int s_
 	}
 	return st;
 }
-
+//End of functions for drawing
 
 //Functions related to uploading and checking the E-paper display using DMA-Interrupt mode
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi){
@@ -1067,7 +1221,7 @@ uint8_t checkDMA_TCBusy(){
 }
 //End of DMA SPI functions
 
-//Functions related to controlling the Adafruit 1.2" Seven Segment
+//Begin of Functions related to controlling the Adafruit 1.2" Seven Segment
 void begin_7seg() {
 	if (HAL_I2C_Master_Transmit(&hi2c1, i2c_addr_7seg, &i2c_cmd_oscOn, 1, i2c_timeout) == HAL_OK)
 		printf("We good\n\r");
@@ -1090,8 +1244,6 @@ void setBrightness_7seg(uint8_t b) {
 	uint8_t txMsg = HT16K33_CMD_BRIGHTNESS | b;
 	HAL_I2C_Master_Transmit(&hi2c1,i2c_addr_7seg,&txMsg, 1, i2c_timeout);
 }
-
-// print_7seg
 void print_7seg(double n)
 {
 	int digits = 2;
@@ -1212,6 +1364,7 @@ void test_7seg() {
 	writeDisplay_7seg();
 	return;
 }
+//End of Functions related to controlling the Adafruit 1.2" Seven Segment
 
 //Functions related to reading the temperature sensor
 HAL_StatusTypeDef readTempSensor(){
@@ -1278,6 +1431,7 @@ void testTemp(){
 
     }
 }
+
 // Other stuff
 int getTim1Prescaler(){
 	return HAL_RCC_GetPCLK2Freq() / 500; //since it is multiplied by 2
@@ -1321,7 +1475,6 @@ void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* theHcan) {
 	printf("\n\r");
 }
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
-
 	HAL_GPIO_WritePin(LD_0_GPIO_Port, LD_0_Pin, GPIO_PIN_SET);
 #ifdef _CAN_PRINTF
 	uint32_t ID;
@@ -1382,7 +1535,17 @@ void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
 	// modifications to buffer will happen before we do the reDraw.
 	doReDraw = 1;
 }
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if (GPIO_Pin == PB_0_Pin){
+		HAL_GPIO_TogglePin(LD_0_GPIO_Port, LD_0_Pin);
+	}
+	else if (GPIO_Pin == PB_1_Pin){
+		HAL_GPIO_TogglePin(LD_1_GPIO_Port, LD_1_Pin);
+	}
+	else if (GPIO_Pin == PB_2_Pin){
+		HAL_GPIO_TogglePin(LD_2_GPIO_Port, LD_2_Pin);
+	}
+}
 #ifdef _DEBUG_ON
 void __io_putchar(uint8_t ch) {
 	HAL_UART_Transmit(&huart2, &ch, 1, 1);
@@ -1417,7 +1580,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = getTim1Prescaler();
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 0;
+  htim1.Init.Period = 1000;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 60000;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;

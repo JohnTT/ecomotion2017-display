@@ -63,6 +63,10 @@
 #define PB_2_GPIO_Port GPIOB
 #define TC_Busyn_Pin GPIO_PIN_7
 #define TC_Busyn_GPIO_Port GPIOC
+#define PB_0A8_Pin GPIO_PIN_8
+#define PB_0A8_GPIO_Port GPIOA
+#define PB_2A10_Pin GPIO_PIN_10
+#define PB_2A10_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
