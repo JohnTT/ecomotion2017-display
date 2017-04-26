@@ -48,9 +48,9 @@ typedef enum {
 	ecoMotion_MotorControl = 0x01,
 	ecoMotion_Speed = 0x02,
 	ecoMotion_FrontWheels = 0x03,
-	ecoMotion_Master_BMS = 0x04,
 	ecoMotion_Humidity = 0x05,
-	ecoMotion_Temperature = 0x06,
+	ecoMotion_Temperature_Master = 0x06,
+	ecoMotion_Temperature_Throttle = 0x07,
 	ecoMotion_Throttle = 0x20,
 	ecoMotion_Master = 0x30,
 	ecoMotion_MasterBMS = 0x31,
@@ -60,6 +60,11 @@ typedef enum {
 	ecoMotion_Error_Master = 0x0FEF,
 	ecoMotion_Error_Display = 0xFDF,
 } CAN_DEVICE_ID;
+
+typedef enum {
+	false = 0,
+	true
+} bool;
 
 typedef struct {
 	uint16_t current;
@@ -84,6 +89,20 @@ typedef struct {
 	uint8_t Second;
 } AllCell_Bat_RTC;
 
+//CANBus information to display
+typedef struct{
+	bool carIsOff; //a message sent by the master controller that controls the screen saver on the display
+	bool masterIsGood;
+	bool throttleIsGood;
+	bool motorControllerIsGood;
+	uint8_t realSpeed; // Real Wheel speed
+	int8_t tempMaster; //Back brake temperature
+	int8_t tempThrottle; //Front brake temperature
+	int8_t tempDisplay; //Cockpit temperature
+	AllCell_Bat_RTC displayRTC; //holds RTC information
+	displayBMSTypeDef displayBMS; //holds battery information
+} displayCANTypeDef;
+
 static void setCANbitRate(uint16_t bitRate, uint16_t periphClock, CAN_HandleTypeDef* theHcan);
 void parseCANMessage(CanRxMsgTypeDef *pRxMsg);
 void init();
@@ -103,6 +122,7 @@ int batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int perc
 void testDraw();
 void delay(int x);
 void screenSaverImage();
+
 // Functions defined for the TCM 441-230 using Polling
 void uploadImageBuffer();
 void resetDataPointer();
@@ -156,11 +176,6 @@ size_t write_7seg(uint8_t c);
 void writeDisplay_7seg(void);
 void printError_7seg(void);
 void test_7seg();
-
-typedef enum {
-	false = 0,
-	true
-} bool;
 
 //temperature stuff
 HAL_StatusTypeDef readTempSensor();

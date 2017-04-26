@@ -55,8 +55,6 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-AllCell_Bat_RTC displayRTC;
-displayBMSTypeDef displayBMS;
 
 int file_size = 15016;
 int header = 16;
@@ -69,10 +67,10 @@ uint8_t DisplayUpdate[3] = {0x24, 0x01, 0x00};
 uint8_t UploadImageData[3] = {0x20, 0x01, 0x00};
 uint8_t ResetDataPointer[3] = {0x20, 0x0D, 0x00};
 int value = 0;
-int realspeed = 0; // Real Wheel speed
 char strConvert[100];
-int batteryLife;
-//New DMA variables
+static const DANGER_TEMP = 50;
+
+//DMA variables
 int doReDraw = 1;
 int isDMAFinished = 1;
 int pkt_section;
@@ -85,9 +83,8 @@ int sentAllData = 0;
 uint8_t rxResponse[2];
 uint8_t txResponse[2] = {0x00, 0x00};
 static int DMA_NEXT = 10; //Corresponds to 10 ms
-//End of New DMA variables
 
-//Adafruit 7-seg variables
+//AdaFruit 7-Segment variables
 uint8_t i2c_addr_7seg = 0x70 << 1;
 uint16_t displaybuffer_7seg[8];
 uint8_t position_7seg = 0;
@@ -112,11 +109,10 @@ static const uint8_t numbertable[] = {
 
 const uint16_t i2c_timeout = 1000;
 
-//cmds for adafruit
+//Commands for AdaFruit
 uint8_t i2c_cmd_oscOn = 0x21;
 
-
-//temp sensor cmds and variables
+//Temperature sensor cmds and variables
 uint8_t i2c_cmd_read_temp = 0x00;
 uint8_t i2c_cmd_state = 0x01;
 uint8_t temp_standby = 0x80;
@@ -125,10 +121,12 @@ int8_t temp[1] = {0x7F}; //max positive temp for start
 uint8_t config[1] = {0x00}; //holds the value of the config register in the temperature sensor (7b = standby switch r/w, 6b = data ready r)
 bool temp_data_ready = false; //holds whether or not the temp data is ready (0 = not ready, 1 = ready)
 uint8_t i2c_temp_addrs = 0b10010000; //temperature address, can be changed, already shifted left 0b1001101
-//end of temp sensor cmds and variables
 
-//begin of user button variables
+//User button variables
 uint8_t brightness = 0;
+
+displayCANTypeDef InfoToDisplay; //holds all the information to display
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -167,19 +165,29 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
+
   /* USER CODE BEGIN 2 */
 #ifdef _DEBUG_ON
 	MX_GPIO_Init();
 //	MX_DMA_Init();
 	MX_USART2_UART_Init();
-//	MX_CAN_Init();
-//	MX_SPI1_Init();
-	MX_TIM1_Init(); //for the 12V LEDs
-//	MX_I2C1_Init();
-//	MX_SPI1_Init();
-	MX_TIM2_Init(); //for the DMA calls
+	//	MX_CAN_Init();
+	//	MX_SPI1_Init();
+	//	MX_TIM1_Init(); //for the 12V LEDs
+	MX_I2C1_Init();
+	//	MX_SPI1_Init();
+	//	MX_TIM2_Init(); //for the DMA calls
+	displayStartUp(); //initializes display for e-paper
+//	HAL_TIM_Base_Start_IT(&htim2); //start the base for update interrupts
+//	HAL_TIM_PWM_Init(&htim1); //start the base for PWM LEDs
+//	HAL_TIM_PWM_Start(&htim1); //start the PWM output pins
+//	setToActive(); //initializes the temperature sensor
+//	initializeInformation(); //initializes the information for the display peripherals to display
+//	updateBufferDMA(); //initialize the buffer with all starting information
+	HAL_Delay(1000); //To allow initialization of other boards, and data sending
+	printf("ENTERING WHILE LOOP\n\r");
 #else
-	MX_GPIO_Init();
+	MX_GPIO_Init(); //for the pins
 	MX_DMA_Init(); //For display without polling
 //	MX_USART2_UART_Init(); //For debugging
 	MX_CAN_Init(); //for Communication between MCUs
@@ -193,8 +201,9 @@ int main(void)
 	HAL_TIM_PWM_Init(&htim1); //start the base for PWM LEDs
 	HAL_TIM_PWM_Start(&htim1); //start the PWM output pins
 	setToActive(); //initializes the temperature sensor
-
-	updateBufferDMA();
+	initializeInformation(); //initializes the information for the display peripherals to display
+	updateBufferDMA(); //initialize the buffer with all starting information
+	HAL_Delay(1000);
 #endif
 
   /* USER CODE END 2 */
@@ -206,15 +215,14 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-//		printf("MAIN LOOP DISPLAY\n\r");
+
 //		printUART2();
 //		HAL_GPIO_WritePin(LD__GPIO_Port, LD_3_Pin, GPIO_PIN_SET);
 //		for (int i = 0; i < 1000; i++) {}
 //		HAL_GPIO_WritePin(LD_3_GPIO_Port, LD_3_Pin, GPIO_PIN_RESET);
 //		testTemp();
-//		test_7seg();
+		update_7seg();
 //		printf("Pin is %u\n\r", HAL_GPIO_ReadPin(PB_0_GPIO_Port, PB_0_Pin));
-//		HAL_Delay(1000);
 
 	}
   /* USER CODE END 3 */
@@ -842,7 +850,81 @@ int batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int perc
 	drawString(DISP_INVERT, x+textLeft, y+textTop, fontSize, fontSpacing, m, 4);
 	return (2*size)+(size/5)+2;
 }
-
+int drawRearSpeed(int x, int y, int fontSize, int fontSpacing, uint8_t speed){
+	char c[4];
+	itoa(speed,c,10);
+	int next = drawString(DISP_BLACK, x, y, fontSize, fontSpacing, c, 3);
+	c[0] = 'K';
+	c[1] = 'M';
+	c[2] = '/';
+	c[3] = 'H';
+	c[4] = '\0';
+	return drawString(DISP_BLACK, next, y, fontSize, fontSpacing, c, 4);
+}
+int drawBMSCurrent(int x, int y, int fontSize, int fontSpacing, double current){
+	char c[4];
+	itoa(current,c,10);
+	int next = drawString(DISP_BLACK, x,y,fontSize,fontSpacing,c,3);
+	c[0] = 'A';
+	return drawString(DISP_BLACK, next,y,fontSize,fontSpacing,c,1);
+}
+int drawBMSBVoltage(int x, int y, int fontSize, int fontSpacing, double voltage){
+	char c[4];
+	itoa(voltage,c,10);
+	int next = drawString(DISP_BLACK, x,y,fontSize,fontSpacing,c,3);
+	c[0] = 'V';
+	return drawString(DISP_BLACK, next,y,fontSize,fontSpacing,c,1);
+}
+int drawBatTemp(int x, int y, int fontSize, int fontSpacing, uint8_t temp){
+	char c[4];
+	if (temp < DANGER_TEMP){
+		itoa(temp,c,10);
+		int next = drawString(DISP_BLACK, x,y,fontSize,fontSpacing,c,3);
+		c[0] = 'C';
+		return drawString(DISP_BLACK,next,y,fontSize,fontSpacing,c,1);
+	}
+	else {
+		c[0] = 'B';
+		c[1] = 'A';
+		c[2] = 'D';
+		return drawString(DISP_BLACK,x,y,fontSize,fontSpacing,c,3);
+	}
+}
+int drawPitTemp(int x, int y, int fontSize, int fontSpacing, int8_t temp){
+	char c[4];
+	c[0] = 'M';
+	int next = drawString(DISP_BLACK, x,y,fontSize,fontSpacing,c,1);
+	itoa(temp,c,10);
+	return drawString(DISP_BLACK, next,y,fontSize,fontSpacing,c,2);
+}
+int drawBackBrakeTemp(int x, int y, int fontSize, int fontSpacing, int8_t temp){
+	char c[4];
+	c[0] = 'B';
+	c[1] = 'B';
+	int next = drawString(DISP_BLACK, x,y,fontSize,fontSpacing,c,2);
+	itoa(temp,c,10);
+	return drawString(DISP_BLACK, next,y,fontSize,fontSpacing,c,2);
+}
+int drawFrontBrakeTemp(int x, int y, int fontSize, int fontSpacing, int8_t temp){
+	char c[4];
+	c[0] = 'F';
+	c[1] = 'B';
+	int next = drawString(DISP_BLACK, x,y,fontSize,fontSpacing,c,2);
+	itoa(temp,c,10);
+	return drawString(DISP_BLACK, next,y,fontSize,fontSpacing,c,2);
+}
+int drawTime(int x, int y, int fontSize, int fontSpacing, uint8_t hour, uint8_t minute, uint8_t second){
+	char c[3];
+	c[2] = ':';
+	itoa(hour,c,10);
+	int next = drawString(DISP_BLACK, x,y,fontSize,fontSpacing,c,3);
+	c[1] = '0';
+	itoa(minute,c,10);
+	next = drawString(DISP_BLACK, next, y, fontSize, fontSpacing, c, 3);
+	c[1] = '0';
+	itoa(second,c,10);
+	return drawString(DISP_BLACK, next, y, fontSize, fontSpacing, c, 3);
+}
 
 //Functions related to uploading and checking the E-paper display using DMA-Interrupt mode
 void displayStartUp(){
@@ -876,6 +958,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if (isDMAFinished && checkDMA_TCBusy()){
 		dmaImageBufferSection();
 	}
+}
+void HAL_TIM_ErrorCallback(TIM_HandleTypeDef *htim){
+	printf("The timer has encountered an error");
 }
 void resetDataPointerDMA(){
 	HAL_SPI_Transmit_DMA(&hspi1, ResetDataPointer, 3); //reset the data pointer
@@ -928,44 +1013,39 @@ void displayImageDMA(){
 }
 void updateBufferDMA(){
 	printf("Now updating the buffer with DMA\n\r");
+	if(InfoToDisplay.carIsOff){ //Draw the screen saver
+		screenSaverImage();
+	}
+	else {
+		setAllWhite(); //clear the buffer
 
-	//	char c[10];
-	//	const static uint8_t batteryX, batteryY;
-	//	const static uint8_t rearSpeedX, rearSpeedY;
-	//	const static uint8_t bmsCurrentX, bmsCurrentY;
-	//	const static uint8_t bmsVoltageX, bmsVoltageY;
-	//	const static uint8_t bmsTemperatureX, bmsTemperatureY;
-	//
-	//	setAllWhite();
-	//
-	//	// Rear Wheel Speed
-	//	itoa(realspeed,c,10);
-	//	drawString(DISP_BLACK, 100,100,5,10,c,10);
-	//	c[0] = 'K';
-	//	c[1] = 'M';
-	//	c[2] = '/';
-	//	c[3] = 'H';
-	//	c[4] = '\0';
-	//	drawString(DISP_BLACK, 150,122,3,5,c,4);
-	//
-	//	// BMS Current Draw
-	//
-	//	// BMS Voltage
-	//
-	//	// BMS Temperature - TO DO Warning Indicator
-	//
-	//	// Battery Percentage/State of Charge
-	//	int percentLoc = batteryImage(15, 225, 60, 4, 2, uint8_t(displayBMS.bat_percentage));
-	//	batteryLife += 1;
-	//	if (batteryLife > 100)
-	//		batteryLife = 0;
-	//
-	//	// Real Time Clock - Current Time
-	//
-	//
+		// Real Time Clock - Current Time
+		drawTime(10, 10, 5, 10, InfoToDisplay.displayRTC.Hour, InfoToDisplay.displayRTC.Minute, InfoToDisplay.displayRTC.Second);
 
-	// Screensaver Image
-	screenSaverImage();
+		// Rear Wheel Speed
+		int next = drawRearSpeed(60, 80, 5, 10, InfoToDisplay.realSpeed);
+
+		// BMS Current Draw
+		next = drawBMSCurrent(10, 160, 5, 10, InfoToDisplay.displayBMS.current);
+		// BMS Voltage
+		next = drawBMSBVoltage(next, 160, 5, 10, InfoToDisplay.displayBMS.voltage);
+		// BMS Temperature - TO DO Warning Indicator
+		next = drawBatTemp(next, 160, 5, 10, InfoToDisplay.displayBMS.temperature);
+
+		// BMS Battery Percentage
+		next = batteryImage(10, 220, 60, 4, 2, (uint8_t)(InfoToDisplay.displayBMS.bat_percentage));
+		// Cockpit Temperature
+		next = drawPitTemp(next, 220, 5, 10, InfoToDisplay.tempDisplay);
+		// Front Brake Temperature
+		next = drawFrontBrakeTemp(next, 220, 5, 10, InfoToDisplay.tempThrottle);
+		// Back Brake Temperature
+		next = drawBackBrakeTemp(next, 220, 5, 10, InfoToDisplay.tempMaster);
+
+
+	}
+
+
+
 }
 void screenSaverImage(){
 	char f[10];
@@ -1183,9 +1263,9 @@ void printError_7seg(void) {
 		writeDigitRaw_7seg(i, (i == 2 ? 0x00 : 0x40));
 	}
 }
-void test_7seg() {
+void update_7seg() {
 	begin_7seg();
-	print_7seg(12.34);
+	print_7seg(InfoToDisplay.realSpeed);
 	writeDisplay_7seg();
 	return;
 }
@@ -1199,7 +1279,7 @@ HAL_StatusTypeDef readTempSensor(){
 	}
 	else
 		printf("We good");
-	status = HAL_I2C_Master_Receive(&hi2c1, i2c_temp_addrs, temp, 1, i2c_timeout);
+	status = HAL_I2C_Master_Receive(&hi2c1, i2c_temp_addrs, InfoToDisplay.tempDisplay, 1, i2c_timeout);
 	if (status != HAL_OK)
 		printf("We no good");
 	else
@@ -1228,7 +1308,7 @@ HAL_StatusTypeDef setToActive(){
 		printf("we no good\n\r");
 	return status;
 }
-HAL_StatusTypeDef updateState(){
+HAL_StatusTypeDef updateState(){ //tells whether or not the temperature conversion has finished
 	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(&hi2c1, i2c_temp_addrs, &i2c_cmd_state, 1, i2c_timeout);
 	if (status != HAL_OK){
 			printf("We no good");
@@ -1250,12 +1330,14 @@ void testTemp(){
 	updateState();
     if (temp_data_ready == true){
     	if (readTempSensor() == HAL_OK){
-    		printf("The temperature value is %i", temp[0]);
+    		printf("The temperature value is %i", InfoToDisplay.tempDisplay);
     	}
 
     }
 }
-
+HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c){
+	printf("I2C encountered an error");
+}
 //user interface functions
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == PB_0_Pin){
@@ -1326,9 +1408,9 @@ void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* theHcan) {
 	printf("\n\r");
 }
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
-	HAL_GPIO_WritePin(LD_0_GPIO_Port, LD_0_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LD_0_GPIO_Port, LD_0_Pin, GPIO_PIN_SET); //set the LED to show message received
 #ifdef _CAN_PRINTF
-	uint32_t ID;
+	CAN_DEVICE_ID ID;
 	if (theHcan->pRxMsg->IDE == CAN_ID_EXT)
 		ID = theHcan->pRxMsg->ExtId;
 	else
@@ -1342,11 +1424,15 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
 	}
 
 
-	HAL_GPIO_WritePin(LD_0_GPIO_Port, LD_0_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LD_0_GPIO_Port, LD_0_Pin, GPIO_PIN_RESET); //turn the LED off
 	if (HAL_CAN_Receive_IT(&hcan, CAN_FIFO0) != HAL_OK) {
 		Error_Handler();
 	}
 
+}
+HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan){
+	printf("The CAN encountered an error.\n\r");
+	printf("The error code was %d", HAL_CAN_GetError(hcan));
 }
 void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
 	static const float _Current_Factor = 0.05;
@@ -1365,22 +1451,47 @@ void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
 	static const float _Year_Offset = 1985;
 
 	masterCAN1_BMSTypeDef bmsBuf;
-
-	switch (pRxMsg->StdId) {
-	case ecoMotion_MasterBMS:
-		memcpy(&bmsBuf, pRxMsg->Data, sizeof(bmsBuf));
-		displayBMS.current = bmsBuf.current *_Current_Factor - _Current_Offset;
-		displayBMS.voltage = bmsBuf.voltage *_Voltage_Factor;
-		displayBMS.temperature = bmsBuf.temperature - _Temp_Offset;
-		displayBMS.bat_percentage = bmsBuf.bat_percentage * _SOC_Factor;
-		break;
-	case ecoMotion_MasterRTC:
-		memcpy(&displayRTC, pRxMsg->Data, sizeof(displayRTC));
-		displayRTC.Day *= _Day_Factor;
-		displayRTC.Second *= _Second_Factor;
-		break;
-	default:
-		break;
+	switch (pRxMsg->StdId){
+			case ecoMotion_MotorControl:
+				InfoToDisplay.motorControllerIsGood = true;
+				break;
+			case ecoMotion_Speed:
+				InfoToDisplay.realSpeed = pRxMsg->Data[0];
+				break;
+			case ecoMotion_FrontWheels:
+			case ecoMotion_Humidity:
+			case ecoMotion_Temperature_Master:
+				InfoToDisplay.tempMaster = pRxMsg->Data[0];
+				break;
+			case ecoMotion_Temperature_Throttle:
+				InfoToDisplay.tempThrottle = pRxMsg->Data[0];
+				break;
+			case ecoMotion_Throttle:
+				InfoToDisplay.throttleIsGood = true;
+				break;
+			case ecoMotion_Master:
+				InfoToDisplay.masterIsGood = true;
+				break;
+			case ecoMotion_MasterBMS:
+				memcpy(&bmsBuf, pRxMsg->Data, sizeof(bmsBuf));
+				InfoToDisplay.displayBMS.current = bmsBuf.current *_Current_Factor - _Current_Offset;
+				InfoToDisplay.displayBMS.voltage = bmsBuf.voltage *_Voltage_Factor;
+				InfoToDisplay.displayBMS.temperature = bmsBuf.temperature - _Temp_Offset;
+				InfoToDisplay.displayBMS.bat_percentage = bmsBuf.bat_percentage * _SOC_Factor;
+				break;
+			case ecoMotion_MasterRTC:
+				memcpy(&InfoToDisplay.displayRTC, pRxMsg->Data, sizeof(InfoToDisplay.displayRTC));
+				InfoToDisplay.displayRTC.Day *= _Day_Factor;
+				InfoToDisplay.displayRTC.Second *= _Second_Factor;
+				break;
+			case ecoMotion_Error_Throttle:
+				InfoToDisplay.throttleIsGood = false;
+				break;
+			case ecoMotion_Error_Master:
+				InfoToDisplay.masterIsGood = false;
+				break;
+			default:
+				break;
 	}
 
 	// modifications to buffer will happen before we do the reDraw.
@@ -1445,19 +1556,19 @@ void __io_putchar(uint8_t ch) {
 #endif
 void printUART2() {
 	// Bat State - Need to be started
-	printf("Current: %f [Amps]\n\r", displayBMS.current);
-	printf("Voltage: %f [Volts]\n\r", displayBMS.voltage);
-	printf("Temperature: %u [deg C]\n\r", displayBMS.temperature);
-	printf("Battery: %f [%%]\n\r", displayBMS.bat_percentage);
+	printf("Current: %f [Amps]\n\r", InfoToDisplay.displayBMS.current);
+	printf("Voltage: %f [Volts]\n\r", InfoToDisplay.displayBMS.voltage);
+	printf("Temperature: %u [deg C]\n\r", InfoToDisplay.displayBMS.temperature);
+	printf("Battery: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
 
 
 	printf("RTC MESSAGE ---------------\n\r");
-	printf("Year: %u\n\r", displayRTC.Year+1985);
-	printf("Month: %u\n\r", displayRTC.Month);
-	printf("Day: %u\n\r", displayRTC.Day);
-	printf("Hour: %u\n\r", displayRTC.Hour);
-	printf("Minute: %u\n\r", displayRTC.Minute);
-	printf("Second: %u\n\r", displayRTC.Second);
+	printf("Year: %u\n\r", InfoToDisplay.displayRTC.Year+1985);
+	printf("Month: %u\n\r", InfoToDisplay.displayRTC.Month);
+	printf("Day: %u\n\r", InfoToDisplay.displayRTC.Day);
+	printf("Hour: %u\n\r", InfoToDisplay.displayRTC.Hour);
+	printf("Minute: %u\n\r", InfoToDisplay.displayRTC.Minute);
+	printf("Second: %u\n\r", InfoToDisplay.displayRTC.Second);
 	printf("\n\r");
 
 }
@@ -1579,7 +1690,21 @@ static void MX_TIM2_Init(void)
 int getTim1Prescaler(){
 	return HAL_RCC_GetPCLK2Freq() / 500; //since it is multiplied by 2
 }
+void HAL_TIM_ErrorCallback(TIM_HandleTypeDef *htim){
+	printf("The timer encountered an error\n\r");
+	//something went wrong
+}
 
+//Modification of display information
+void initializeInformation(){
+	InfoToDisplay.carIsOff = true; //a message sent by the master controller that controls the screen saver on the display
+	InfoToDisplay.masterIsGood = false;
+	InfoToDisplay.throttleIsGood = false;
+	InfoToDisplay.motorControllerIsGood = false;
+	InfoToDisplay.realSpeed = 0; // Real Wheel speed
+	InfoToDisplay.tempMaster = 0; //Master Wheel speed
+	InfoToDisplay.tempThrottle = 0; //Throttle Wheel speed
+}
 /* USER CODE END 4 */
 
 /**
