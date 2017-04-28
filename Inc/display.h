@@ -122,6 +122,8 @@ int batteryImage(int x, int y, int size, int fontSize, int fontSpacing, int perc
 void testDraw();
 void delay(int x);
 void screenSaverImage();
+void initializeInformation();
+void changeBrightness();
 
 // Functions defined for the TCM 441-230 using Polling
 void uploadImageBuffer();
@@ -132,6 +134,7 @@ void getDeviceID();
 void getSystemInfo();
 void getSystemVersionCode();
 void readSensorData();
+void displayStartUp();
 
 //Functions defined for the TCM 441-230 using DMA
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
@@ -175,7 +178,7 @@ void writeDigitNum_7seg(uint8_t d, uint8_t num, uint8_t dot);
 size_t write_7seg(uint8_t c);
 void writeDisplay_7seg(void);
 void printError_7seg(void);
-void test_7seg();
+void update_7seg();
 
 //temperature stuff
 HAL_StatusTypeDef readTempSensor();
