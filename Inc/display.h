@@ -8,7 +8,7 @@
 #ifndef DISPLAY_H_
 #define DISPLAY_H_
 
-// #define _CAR 1 //for running in the car
+#define _CAR 1 //for running in the car
 
 #ifdef _CAR
 
@@ -71,6 +71,7 @@ typedef struct {
 	uint16_t voltage;
 	uint8_t temperature;
 	uint8_t bat_percentage;
+	uint16_t timer;
 } masterCAN1_BMSTypeDef;
 
 typedef struct {
@@ -78,6 +79,7 @@ typedef struct {
 	double voltage;
 	uint8_t temperature;
 	double bat_percentage;
+	uint16_t timer;
 } displayBMSTypeDef;
 
 typedef struct {
@@ -179,7 +181,7 @@ size_t write_7seg(uint8_t c);
 void writeDisplay_7seg(void);
 void printError_7seg(void);
 void update_7seg();
-
+int getTim1Prescaler();
 //temperature stuff
 HAL_StatusTypeDef readTempSensor();
 HAL_StatusTypeDef changeAddress(); //Only works for the TC74A5 sensors
@@ -188,7 +190,10 @@ HAL_StatusTypeDef setToActive();
 HAL_StatusTypeDef updateState();
 void testTemp();
 
-
+//user stuff
+void resetNumbers();
+void startPauseTimer();
+void lapCount();
 
 
 #endif /* DISPLAY_H_ */

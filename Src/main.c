@@ -69,7 +69,7 @@ uint8_t ResetDataPointer[3] = {0x20, 0x0D, 0x00};
 int value = 0;
 bool down = 0;
 char strConvert[100];
-static const DANGER_TEMP = 50; //temperature at which the battery is in danger
+static int DANGER_TEMP = 50; //temperature at which the battery is in danger
 
 //DMA variables
 int doReDraw = 1;
@@ -125,9 +125,12 @@ bool temp_data_ready = false; //holds whether or not the temp data is ready (0 =
 uint8_t i2c_temp_addrs = 0b10010000; //temperature address, can be changed, already shifted left 0b1001101
 
 //User button variables
-uint8_t brightness = 3;
-
-
+uint8_t brightness = 10;
+uint16_t totalLapTime[10];
+uint16_t relativeLapTime[10];
+int lapIndex = 0;
+uint16_t startTime = 0;
+uint16_t pauseTime = 0;
 displayCANTypeDef InfoToDisplay; //holds all the information to display
 
 /* USER CODE END PV */
@@ -187,7 +190,7 @@ int main(void)
 	setToActive(); //initializes the temperature sensor
 	initializeInformation(); //initializes the information for the display peripherals to display
 	updateBufferDMA(); //initialize the buffer with all starting information
-	HAL_Delay(1000); //To allow initialization of other boards, and data sending
+	//HAL_Delay(1000); //To allow initialization of other boards, and data sending
 	printf("ENTERING WHILE LOOP\n\r");
 #else
 	MX_GPIO_Init(); //for the pins
@@ -196,13 +199,13 @@ int main(void)
 	MX_CAN_Init(); //for Communication between MCUs
 	MX_SPI1_Init(); //for E-paper display
 	MX_I2C1_Init(); //for Seven Segment Display and sensors
-	MX_TIM1_Init(); //for PWM 12V LEDs
+//	MX_TIM1_Init(); //for PWM 12V LEDs
 	MX_TIM2_Init(); //for the DMA calls
 
 	displayStartUp(); //initializes display for e-paper
 	HAL_TIM_Base_Start_IT(&htim2); //start the base for update interrupts
-	HAL_TIM_PWM_Init(&htim1); //start the base for PWM LEDs
-	HAL_TIM_PWM_Start(&htim1); //start the PWM output pins
+//	HAL_TIM_PWM_Init(&htim1); //start the base for PWM LEDs
+//	HAL_TIM_PWM_Start(&htim1); //start the PWM output pins
 	setToActive(); //initializes the temperature sensor
 	initializeInformation(); //initializes the information for the display peripherals to display
 	HAL_Delay(1000);
@@ -227,10 +230,11 @@ int main(void)
 		else if (delay >= 25)
 			delay = 0;
 		delay++;
-//		printf("continue\n\r");
+		printf("continue\n\r");
 		update_7seg();
-		printf("Battery: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
-		printf("Temperature: %u [deg C]\n\r", InfoToDisplay.displayBMS.temperature);
+		printf("no continue\n\r");
+//		printf("Battery: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
+//		printf("Temperature: %u [deg C]\n\r", InfoToDisplay.displayBMS.temperature);
 
 		HAL_Delay(100);
 		//		printf("Pin is %u\n\r", HAL_GPIO_ReadPin(PB_0_GPIO_Port, PB_0_Pin));
@@ -820,6 +824,9 @@ int drawCharacter(dispColour colour, int x, int y, int pt, char c)
 		drawRectangle(colour, x,y+w/4,x+px,y+w/4+px);
 		drawRectangle(colour, x,y+w-w/4,x+px,y+w-w/4+px);
 		break;
+	case '.':
+		drawRectangle(colour, x,y+w-w/4,x+px,y+w-w/4+px);
+		break;
 	case '%':
 		dx = 1;
 		dy = 2;
@@ -984,6 +991,44 @@ int drawBatInfo(int x, int y, int fontSize, int fontSpacing){
 	c[9] = ':';
 	return drawString(DISP_BLACK, x, y, fontSize, fontSpacing, c, 10);
 }
+int drawTimerTime(int x, int y, int fontSize, int fontSpacing, uint16_t time){
+	char c[10];
+	int minutes = time / 60;
+	int seconds = time % 60;
+	itoa(minutes, c, 10);
+	if (minutes < 10)
+		c[1] = '0';
+	c[2] = '.';
+	int next = drawString(DISP_BLACK, x, y, fontSize, fontSpacing, c, 3);
+	itoa(seconds, c, 10);
+	return drawString(DISP_BLACK, next, y, fontSize, fontSpacing, c, 2);
+}
+int drawLapCount(int x, int y, int fontSize, int fontSpacing, uint8_t lap){
+	char c[10];
+	itoa(lap, c, 10);
+	return drawString(DISP_BLACK, x, y, fontSize, fontSpacing, c, 1);
+}
+int drawPrevRealLapTime(int x, int y, int fontSize, int fontSpacing, uint16_t time){
+	char c[10];
+	int minutes = (int)(time / 60);
+	int seconds = (int)(time % 60);
+	itoa(minutes, c, 10);
+	c[3] = '.';
+	printf("%s\n\r");
+	int next = drawString(DISP_BLACK, x, y, fontSize, fontSpacing, c, 3);
+	itoa(seconds, c, 10);
+	return drawString(DISP_BLACK, next, y, fontSize, fontSpacing, c, 2);
+}
+int drawPrevRelLapTime(int x, int y, int fontSize, int fontSpacing, uint16_t time){
+	char c[10];
+	int minutes = time / 60;
+	int seconds = time % 60;
+	itoa(minutes, c, 10);
+	c[3] = '.';
+	int next = drawString(DISP_BLACK, x, y, fontSize, fontSpacing, c, 3);
+	itoa(seconds, c, 10);
+	return drawString(DISP_BLACK, next, y, fontSize, fontSpacing, c, 2);
+}
 
 //Functions related to uploading and checking the E-paper display using DMA-Interrupt mode
 void displayStartUp(){
@@ -1075,22 +1120,30 @@ void updateBufferDMA(){
 	}
 	else {
 		setAllWhite(); //clear the buffer
-
+		int next;
 		// Real Time Clock - Current Time
 		drawTime(10, 10, 3, 10, InfoToDisplay.displayRTC.Hour, InfoToDisplay.displayRTC.Minute, InfoToDisplay.displayRTC.Second);
-		printf("Battery 2: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
+
 		// Cockpit Temperature
 		drawPitTemp(220, 10, 3, 10, InfoToDisplay.tempDisplay);
-		printf("Battery 3: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
-		// Rear Wheel Speed
-		int next = drawRearSpeed(60, 80, 3, 10, InfoToDisplay.realSpeed);
-		printf("Battery 4: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
 
+		// Rear Wheel Speed
+//		next = drawRearSpeed(60, 80, 3, 10, InfoToDisplay.realSpeed);
+
+		//Draw lap count
+		next = drawLapCount(10, 80, 3, 10, lapIndex);
+
+		// Current time of the timer
+		drawTimerTime(next + 30, 80, 3, 10, InfoToDisplay.displayBMS.timer - startTime);
+		printf("Battery 3: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
+
+		// Draw character 'batinfo' title
 		drawBatInfo(10, 120, 3, 10);
-		printf("Battery 5: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
+
+
 		// BMS Current Draw
 		next = drawBMSCurrent(10, 160, 3, 10, InfoToDisplay.displayBMS.current);
-		printf("Battery 6: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
+
 		// BMS Voltage
 		next = drawBMSBVoltage(next + 50, 160, 3, 10, InfoToDisplay.displayBMS.voltage);
 		// BMS Temperature - TO DO Warning Indicator
@@ -1099,15 +1152,20 @@ void updateBufferDMA(){
 		next = drawBatTemp(next + 50, 160, 3, 10, InfoToDisplay.displayBMS.temperature);
 
 		// BMS Battery Percentage
-		printf("Battery: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
-		//printf("BMS RAW Battery: %f [deg C]\n\r", bmsBuf.bat_percentage);
+
 		next = batteryImage(10, 220, 60, 4, 2, (int)(InfoToDisplay.displayBMS.bat_percentage));
-		// Front Brake Temperature
-		drawFrontBrakeTemp(next + 30, 220, 3, 10, InfoToDisplay.tempThrottle);
-		// Back Brake Temperature
-		next = drawBackBrakeTemp(next + 30, 250, 3, 10, InfoToDisplay.tempMaster);
+//		// Front Brake Temperature
+//		drawFrontBrakeTemp(next + 30, 220, 3, 10, InfoToDisplay.tempThrottle);
+//		// Back Brake Temperature
+//		next = drawBackBrakeTemp(next + 30, 250, 3, 10, InfoToDisplay.tempMaster);
 
+		//Relative Lap Time of the previous lap
+		drawPrevRelLapTime(next + 30, 220, 3, 10, relativeLapTime[lapIndex]);
+//		printf("Battery 4: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
 
+		//Actual Time of the previous lap
+		drawPrevRealLapTime(next + 30, 250, 3, 10, totalLapTime[lapIndex]);
+		printf("Battery 5: %f [%%]\n\r", InfoToDisplay.displayBMS.bat_percentage);
 	}
 
 
@@ -1419,27 +1477,43 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c){
 //user interface functions
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == PB_0_Pin){
-		HAL_GPIO_TogglePin(LD_0_GPIO_Port, LD_0_Pin);
-		changeBrightness();
+//		changeBrightness();
+		startPauseTimer();
 	}
 	else if (GPIO_Pin == PB_1_Pin){
-		HAL_GPIO_TogglePin(LD_1_GPIO_Port, LD_1_Pin);
+		lapCount();
 	}
 	else if (GPIO_Pin == PB_2_Pin){
-		HAL_GPIO_TogglePin(LD_2_GPIO_Port, LD_2_Pin);
+		resetNumbers();
 	}
 }
 void changeBrightness(){
 	brightness = brightness + 3 > 15 ? brightness = 0 : (brightness + 3);
 }
-void moveUp(){
+void startPauseTimer(){
+	if (startTime == 0)
+		startTime = InfoToDisplay.displayBMS.timer;
+	else if (pauseTime == 0)
+		pauseTime =  InfoToDisplay.displayBMS.timer;
+	else {
+		startTime += InfoToDisplay.displayBMS.timer - pauseTime;
+		pauseTime = 0;
+	}
 
 }
-void moveDown(){
-
+void lapCount(){
+	lapIndex++;
+	int curTime = InfoToDisplay.displayBMS.timer - startTime;
+	totalLapTime[lapIndex] = curTime;
+	if (lapIndex <= 0)
+		relativeLapTime[lapIndex] = totalLapTime[lapIndex];
+	else
+		relativeLapTime[lapIndex] = curTime - totalLapTime[lapIndex - 1];
 }
-void enter(){
-
+void resetNumbers(){
+	lapIndex = 0;
+	startTime = 0;
+	pauseTime = 0;
 }
 
 //CAN functions
@@ -1493,9 +1567,8 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
 		ID = theHcan->pRxMsg->ExtId;
 	else
 		ID = theHcan->pRxMsg->StdId;
-//	printf("Message Received and Acknowledged from ID %x\n\r", ID);
+	printf("Message Received and Acknowledged from ID %x\n\r", ID);
 #endif
-
 
 	if (theHcan->pRxMsg->IDE == CAN_ID_STD) {
 		parseCANMessage(theHcan->pRxMsg);
@@ -1508,22 +1581,22 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* theHcan) {
 }
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan){
 	printf("The CAN encountered an error.\n\r");
-	printf("The error code was %u", HAL_CAN_GetError(hcan));
+	printf("The error code was %lu", HAL_CAN_GetError(hcan));
 }
 void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
 	static const float _Current_Factor = 0.05;
 	static const float _Voltage_Factor = 0.05;
-	static const float _Impedance_Factor = 0.01;
-	static const float _CellVolt_Factor = 0.01;
+//	static const float _Impedance_Factor = 0.01;
+//	static const float _CellVolt_Factor = 0.01;
 	static const float _Day_Factor = 0.25;
 	static const float _Second_Factor = 0.25;
 	static const float _SOC_Factor = 0.5;
-	static const float _Capacity_Factor = 0.01;
+//	static const float _Capacity_Factor = 0.01;
 
 
 	static const uint16_t _Current_Offset = 1600;
 	static const uint16_t _Temp_Offset = 40;
-	static const uint32_t _PwAvailable_Offset = 2000000000;
+//	static const uint32_t _PwAvailable_Offset = 2000000000;
 	static const float _Year_Offset = 1985;
 
 	masterCAN1_BMSTypeDef bmsBuf;
@@ -1556,6 +1629,7 @@ void parseCANMessage(CanRxMsgTypeDef *pRxMsg) {
 		InfoToDisplay.displayBMS.voltage = bmsBuf.voltage *_Voltage_Factor;
 		InfoToDisplay.displayBMS.temperature = bmsBuf.temperature - _Temp_Offset;
 		InfoToDisplay.displayBMS.bat_percentage = bmsBuf.bat_percentage * _SOC_Factor;
+		InfoToDisplay.displayBMS.timer = bmsBuf.timer;
 		break;
 	case ecoMotion_MasterRTC:
 		memcpy(&InfoToDisplay.displayRTC, pRxMsg->Data, sizeof(InfoToDisplay.displayRTC));
@@ -1664,7 +1738,7 @@ static void MX_TIM1_Init(void)
 	htim1.Instance = TIM1;
 	htim1.Init.Prescaler = getTim1Prescaler();
 	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim1.Init.Period = 10;
+	htim1.Init.Period = DMA_NEXT;
 	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim1.Init.RepetitionCounter = 0;
 	htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -1784,6 +1858,7 @@ void initializeInformation(){
 	InfoToDisplay.tempMaster = 0; //Master Wheel speed
 	InfoToDisplay.tempThrottle = 0; //Throttle Wheel speed
 	InfoToDisplay.tempDisplay = 0; //my temp
+	InfoToDisplay.displayBMS.timer = 0;
 }
 /* USER CODE END 4 */
 
@@ -1798,7 +1873,7 @@ void Error_Handler(void)
 	/* User can add his own implementation to report the HAL error return state */
 	printf("Error Handler\n\r");
 	HAL_NVIC_SystemReset();
-	HAL_StatusTypeDef status;
+	HAL_StatusTypeDef status = HAL_OK;
 	do {
 		hcan.pTxMsg->IDE = CAN_ID_EXT;
 		hcan.pTxMsg->RTR = CAN_RTR_DATA;
