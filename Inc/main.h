@@ -41,20 +41,37 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define B1_Pin GPIO_PIN_13
-#define B1_GPIO_Port GPIOC
+#define LD_0_Pin GPIO_PIN_0
+#define LD_0_GPIO_Port GPIOC
+#define LD_1_Pin GPIO_PIN_1
+#define LD_1_GPIO_Port GPIOC
+#define LD_2_Pin GPIO_PIN_2
+#define LD_2_GPIO_Port GPIOC
+#define LD_3_Pin GPIO_PIN_3
+#define LD_3_GPIO_Port GPIOC
 #define USART_TX_Pin GPIO_PIN_2
 #define USART_TX_GPIO_Port GPIOA
 #define USART_RX_Pin GPIO_PIN_3
 #define USART_RX_GPIO_Port GPIOA
 #define SPI1_CSn_Pin GPIO_PIN_4
 #define SPI1_CSn_GPIO_Port GPIOA
+#define PB_0_Pin GPIO_PIN_13
+#define PB_0_GPIO_Port GPIOB
+#define PB_1_Pin GPIO_PIN_14
+#define PB_1_GPIO_Port GPIOB
+#define PB_2_Pin GPIO_PIN_15
+#define PB_2_GPIO_Port GPIOB
 #define TC_Busyn_Pin GPIO_PIN_7
 #define TC_Busyn_GPIO_Port GPIOC
+#define PB_0A8_Pin GPIO_PIN_8
+#define PB_0A8_GPIO_Port GPIOA
+#define PB_2A10_Pin GPIO_PIN_10
+#define PB_2A10_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

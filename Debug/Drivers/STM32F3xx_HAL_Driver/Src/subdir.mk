@@ -5,8 +5,6 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.c \
-../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc.c \
-../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc_ex.c \
 ../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_can.c \
 ../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.c \
 ../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_dma.c \
@@ -28,8 +26,6 @@ C_SRCS += \
 
 OBJS += \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.o \
-./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc.o \
-./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc_ex.o \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_can.o \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.o \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_dma.o \
@@ -51,8 +47,6 @@ OBJS += \
 
 C_DEPS += \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.d \
-./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc.d \
-./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_adc_ex.d \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_can.d \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.d \
 ./Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_dma.d \
@@ -78,7 +72,7 @@ Drivers/STM32F3xx_HAL_Driver/Src/%.o: ../Drivers/STM32F3xx_HAL_Driver/Src/%.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)
-	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 '-D__weak=__attribute__((weak))' '-D__packed=__attribute__((__packed__))' -DUSE_HAL_DRIVER -DSTM32F303xE -I"/Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Inc" -I"/Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc" -I"/Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/STM32F3xx_HAL_Driver/Inc/Legacy" -I"/Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/CMSIS/Device/ST/STM32F3xx/Include" -I"/Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Drivers/CMSIS/Include" -I"/Users/Constellations/Documents/university/shell_eco/fixSPIforDisplay/Inc"  -Os -g3 -Wall -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 '-D__weak=__attribute__((weak))' '-D__packed=__attribute__((__packed__))' -DUSE_HAL_DRIVER -DSTM32F303xE -I"/Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Inc" -I"/Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc" -I"/Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/STM32F3xx_HAL_Driver/Inc/Legacy" -I"/Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/CMSIS/Device/ST/STM32F3xx/Include" -I"/Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Drivers/CMSIS/Include" -I"/Users/Constellations/Documents/university/shell_eco/workspace_umecom/display/Inc"  -Os -g3 -Wall -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
